@@ -1,0 +1,36 @@
+export function parseMonto(value: unknown): number {
+  if (value === null || value === undefined || value === "") return NaN;
+  if (typeof value === "number") return value;
+  const str = String(value)
+    .replace(/[+]/g, "")
+    .replace(/,/g, "")
+    .replace(/Bs\.?S\.?/gi, "")
+    .replace(/\$/g, "")
+    .trim();
+  return parseFloat(str);
+}
+
+export function amountsMatch(a: number, b: number, epsilon = 0.02): boolean {
+  if (Number.isNaN(a) || Number.isNaN(b)) return false;
+  return Math.abs(a - b) <= epsilon;
+}
+
+export function roundMontoKey(amount: number): string {
+  return amount.toFixed(2);
+}
+
+export function formatBs(amount: number | null): string {
+  if (amount === null || Number.isNaN(amount)) return "";
+  return `Bs.S ${amount.toLocaleString("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+export function formatUsd(amount: number | null): string {
+  if (amount === null || Number.isNaN(amount)) return "";
+  return `$ ${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

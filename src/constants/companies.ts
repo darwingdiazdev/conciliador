@@ -1,0 +1,10 @@
+export const COMPANIES = [
+  "EMBUTIDOS FATTORIA",
+  "MOHAN 2025",
+  "EMBUTIDOS MOHAN",
+  "DELICATESES EMMANUEL",
+  "DELICATESES MOMOY",
+  "DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA",
+] as const;
+
+export type CompanyName = (typeof COMPANIES)[number];
