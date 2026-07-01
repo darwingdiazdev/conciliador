@@ -16,9 +16,24 @@ export async function parseMerchant(buffer: Buffer): Promise<MerchantRow[]> {
 
   const colFecha = findColumnIndex(headers, ["fechadetransaccion", "fechatransaccion", "fecha"]);
   const colFactura = findColumnIndex(headers, ["nfactura", "factura", "numerofactura"]);
-  const colMontoBs = findColumnIndex(headers, ["montopagado", "montopagad"]);
-  const colMontoUsd = findColumnIndex(headers, ["montopagadousd", "montoasignado", "montousd"]);
-  const colTasa = findColumnIndex(headers, ["tasadecambio", "tasacamb"]);
+  const colMontoBs = findColumnIndex(headers, [
+    "montopagadoenves",
+    "montopagadoenbs",
+    "montopagado",
+    "montopagad",
+  ]);
+  const colMontoUsd = findColumnIndex(headers, [
+    "montopagadoenusd",
+    "montopagadousd",
+    "montoasignado",
+    "montousd",
+  ]);
+  const colTasa = findColumnIndex(headers, [
+    "tasadecambio",
+    "tasadecamb",
+    "tasadecam",
+    "tasacamb",
+  ]);
   const colRef = findColumnIndex(headers, ["referencia", "nreferencia"]);
 
   if (colFactura < 0) {

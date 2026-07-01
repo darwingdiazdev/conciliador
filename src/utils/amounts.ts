@@ -27,6 +27,12 @@ export function formatBs(amount: number | null): string {
   })}`;
 }
 
+export function amountsMatchUsd(a: number, b: number): boolean {
+  const ra = Math.round(a * 100) / 100;
+  const rb = Math.round(b * 100) / 100;
+  return amountsMatch(ra, rb, 0.05);
+}
+
 export function formatUsd(amount: number | null): string {
   if (amount === null || Number.isNaN(amount)) return "";
   return `$ ${amount.toLocaleString("en-US", {

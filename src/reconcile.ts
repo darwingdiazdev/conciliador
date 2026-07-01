@@ -1,4 +1,4 @@
-import { amountsMatch, roundMontoKey } from "./utils/amounts";
+import { amountsMatch, amountsMatchUsd, roundMontoKey } from "./utils/amounts";
 import {
   BancoRow,
   ConciliacionRow,
@@ -57,7 +57,7 @@ export function reconcile(
       casheaBs,
       bncBs,
       pagado: casheaBs !== null && bncBs !== null && amountsMatch(casheaBs, bncBs),
-      tipoPago: classifyTipoPago(m, casheaBs, venta.cuotaPendienteUsd),
+      tipoPago: classifyTipoPago(m, casheaBs, venta),
     });
   }
 
@@ -80,14 +80,31 @@ export function reconcile(
 function classifyTipoPago(
   merchant: MerchantRow | undefined,
   casheaBs: number | null,
-  cuotaPendienteUsd: number
+  venta: VentaRow
 ): TipoPagoCuota | null {
   if (!merchant || casheaBs === null || casheaBs <= 0) return null;
-  if (!merchant.tasaCambio || merchant.tasaCambio <= 0) return null;
 
-  const pagadoUsd = casheaBs / merchant.tasaCambio;
-  if (amountsMatch(pagadoUsd, cuotaPendienteUsd)) return "Pago completo";
+  const cuotaPendienteUsd = venta.cuotaPendienteUsd;
+  if (!cuotaPendienteUsd || cuotaPendienteUsd <= 0) return null;
+
+  const pagadoUsd = resolvePagadoUsd(merchant, casheaBs);
+  if (pagadoUsd === null) return null;
+
+  if (amountsMatchUsd(pagadoUsd, cuotaPendienteUsd)) return "Pago completo";
   return "Abono";
+}
+
+function resolvePagadoUsd(
+  merchant: MerchantRow,
+  casheaBs: number
+): number | null {
+  if (merchant.montoPagadoUsd > 0) {
+    return merchant.montoPagadoUsd;
+  }
+  if (merchant.tasaCambio > 0 && casheaBs > 0) {
+    return casheaBs / merchant.tasaCambio;
+  }
+  return null;
 }
 
 function findBancoCandidates(

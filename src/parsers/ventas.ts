@@ -3,6 +3,8 @@ import {
   cellToFactura,
   detectHeaderRow,
   findColumnIndex,
+  findColumnDollarSign,
+  findUsdAmountColumn,
   bufferToRows,
 } from "../utils/excel-helpers";
 import { parseMonto } from "../utils/amounts";
@@ -12,21 +14,48 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
   const allRows = bufferToRows(buffer);
   const headerIdx = detectHeaderRow(allRows);
   const headers = (allRows[headerIdx] ?? []).map(String);
+  const dataRows = allRows.slice(headerIdx + 1);
 
   const colFecha = findColumnIndex(headers, ["fechaemision", "fechaemitida"]);
   const colFactura = findColumnIndex(headers, ["nfactura", "factura", "numerofactura"]);
   const colEmpresa = findColumnIndex(headers, ["empresa"]);
-  const colCuotaIniUsd = findColumnIndex(headers, [
-    "cuotainicialusd",
-    "cuotainicial",
+  let colCuotaIniUsd = findColumnDollarSign(headers, [["cuota", "inicial"]]);
+  if (colCuotaIniUsd < 0) {
+    colCuotaIniUsd = findUsdAmountColumn(headers, dataRows, {
+      requiredTerms: [["cuota", "inicial"]],
+      fallbackMatchers: ["cuotainicialusd", "cuotainicial"],
+    });
+  }
+
+  let colCuotaPenUsd = findColumnDollarSign(headers, [["cuota", "pend"]]);
+  if (colCuotaPenUsd < 0) {
+    colCuotaPenUsd = findUsdAmountColumn(headers, dataRows, {
+      requiredTerms: [
+        ["cuota", "pend"],
+        ["saldo", "pend"],
+        ["montocuota"],
+        ["valorcuota"],
+        ["importecuota"],
+      ],
+      fallbackMatchers: ["cuotapendienteusd", "cuotapendiente", "cuotapendie"],
+    });
+  }
+  const colTotalUsd = findUsdAmountColumn(headers, dataRows, {
+    requiredTerms: [
+      ["total", "usd"],
+      ["totalusd"],
+      ["montototal"],
+      ["total", "venta"],
+    ],
+    fallbackMatchers: ["totalusd", "total"],
+  });
+  const colTasa = findColumnIndex(headers, [
+    "tasadecambio",
+    "tasadecamb",
+    "tasadecam",
+    "tasacamb",
+    "tasabcv",
   ]);
-  const colCuotaPenUsd = findColumnIndex(headers, [
-    "cuotapendienteusd",
-    "cuotapendiente",
-    "cuotapendie",
-  ]);
-  const colTotalUsd = findColumnIndex(headers, ["totalusd", "total"]);
-  const colTasa = findColumnIndex(headers, ["tasadecambio", "tasacamb", "tasabcv"]);
 
   if (colFactura < 0) {
     throw new Error(
@@ -45,41 +74,21 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
     if (Number.isNaN(numeroFactura) || seen.has(numeroFactura)) continue;
     seen.add(numeroFactura);
 
-    let cuotaInicialUsd = colCuotaIniUsd >= 0 ? parseMonto(row[colCuotaIniUsd]) : NaN;
-    let cuotaPendienteUsd = colCuotaPenUsd >= 0 ? parseMonto(row[colCuotaPenUsd]) : NaN;
+    const cuotaInicialUsd =
+      colCuotaIniUsd >= 0 ? parseMonto(row[colCuotaIniUsd]) : NaN;
+    const cuotaPendienteUsd =
+      colCuotaPenUsd >= 0 ? parseMonto(row[colCuotaPenUsd]) : NaN;
 
-    // Si hay varias columnas "cuota inicial", tomar la que parece USD (valor menor)
-    if (colCuotaIniUsd >= 0) {
-      const candidates = headers
-        .map((h, idx) => ({ h: h.toLowerCase(), idx }))
-        .filter(({ h }) => h.includes("cuota") && h.includes("inicial"));
-      if (candidates.length > 1) {
-        const usdCol = candidates
-          .map((c) => ({ idx: c.idx, val: parseMonto(row[c.idx]) }))
-          .filter((c) => !Number.isNaN(c.val))
-          .sort((a, b) => a.val - b.val)[0];
-        if (usdCol) cuotaInicialUsd = usdCol.val;
-      }
+    let totalUsd = NaN;
+    if (colTotalUsd >= 0) {
+      const parsedTotal = parseMonto(row[colTotalUsd]);
+      if (!Number.isNaN(parsedTotal)) totalUsd = parsedTotal;
     }
-
-    if (colCuotaPenUsd >= 0) {
-      const candidates = headers
-        .map((h, idx) => ({ h: h.toLowerCase(), idx }))
-        .filter(({ h }) => h.includes("cuota") && h.includes("pend"));
-      if (candidates.length > 1) {
-        const usdCol = candidates
-          .map((c) => ({ idx: c.idx, val: parseMonto(row[c.idx]) }))
-          .filter((c) => !Number.isNaN(c.val))
-          .sort((a, b) => a.val - b.val)[0];
-        if (usdCol) cuotaPendienteUsd = usdCol.val;
-      }
+    if (Number.isNaN(totalUsd)) {
+      totalUsd =
+        (Number.isNaN(cuotaInicialUsd) ? 0 : cuotaInicialUsd) +
+        (Number.isNaN(cuotaPendienteUsd) ? 0 : cuotaPendienteUsd);
     }
-
-    const totalUsd =
-      colTotalUsd >= 0 && parseMonto(row[colTotalUsd]) < 1000
-        ? parseMonto(row[colTotalUsd])
-        : (Number.isNaN(cuotaInicialUsd) ? 0 : cuotaInicialUsd) +
-          (Number.isNaN(cuotaPendienteUsd) ? 0 : cuotaPendienteUsd);
 
     ventas.push({
       fechaEmision: colFecha >= 0 ? cellToDateString(row[colFecha]) : "",
