@@ -5,7 +5,7 @@ import { COMPANIES } from "../constants/companies";
 import { formatBs, formatUsd } from "../utils/amounts";
 import { ResumenConciliacion } from "../types";
 
-const COLS = 9;
+const COLS = 10;
 const YELLOW_BANNER = "FFFFFF00";
 const YELLOW_CASHEA = "FFFFF2CC"; // amarillo claro
 const GREY_HEADER = "FFE8E8E8";
@@ -77,6 +77,7 @@ export async function exportConciliacion(
     "Cashea",
     "BNC",
     "Pagado",
+    "Tipo pago",
   ];
 
   const header = sheet.getRow(headerRow);
@@ -86,11 +87,14 @@ export async function exportConciliacion(
     cell.value = h;
     cell.font = { bold: true, size: 10, color: { argb: BLACK } };
     cell.fill = solidFill(GREY_HEADER);
-    cell.alignment = { horizontal: i >= 3 && i <= 7 ? "right" : "left", vertical: "middle" };
+    cell.alignment = {
+      horizontal: i >= 3 && i <= 7 ? "right" : i === 9 ? "center" : "left",
+      vertical: "middle",
+    };
     cell.border = thinBorder();
   });
 
-  sheet.autoFilter = { from: `A${headerRow}`, to: `I${headerRow}` };
+  sheet.autoFilter = { from: `A${headerRow}`, to: `J${headerRow}` };
 
   // ── Datos ──
   resumen.filas.forEach((fila, idx) => {
@@ -110,6 +114,7 @@ export async function exportConciliacion(
       formatBs(fila.casheaBs),
       formatBs(fila.bncBs),
       fila.pagado ? "✓" : "",
+      fila.tipoPago ?? "",
     ];
 
     values.forEach((v, i) => {
@@ -126,6 +131,14 @@ export async function exportConciliacion(
         cell.fill = solidFill(rowFill);
         if (fila.pagado) {
           cell.font = { bold: true, size: 13, color: { argb: GREEN } };
+        }
+      } else if (i === 9) {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.fill = solidFill(rowFill);
+        if (fila.tipoPago === "Pago completo") {
+          cell.font = { bold: true, color: { argb: GREEN } };
+        } else if (fila.tipoPago === "Abono") {
+          cell.font = { bold: true, color: { argb: RED } };
         }
       } else {
         cell.fill = solidFill(rowFill);
@@ -147,6 +160,7 @@ export async function exportConciliacion(
     { width: 17 },
     { width: 17 },
     { width: 9 },
+    { width: 14 },
     { width: 2 },
     { width: 22 },
     { width: 18 },

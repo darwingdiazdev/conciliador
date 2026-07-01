@@ -30,6 +30,8 @@ export interface BancoParseResult {
   saldoFinal: number;
 }
 
+export type TipoPagoCuota = "Pago completo" | "Abono";
+
 export interface ConciliacionRow {
   fechaEmitida: string;
   numeroFactura: number;
@@ -40,6 +42,7 @@ export interface ConciliacionRow {
   casheaBs: number | null;
   bncBs: number | null;
   pagado: boolean;
+  tipoPago: TipoPagoCuota | null;
 }
 
 export interface ResumenConciliacion {

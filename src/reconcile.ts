@@ -4,6 +4,7 @@ import {
   ConciliacionRow,
   MerchantRow,
   ResumenConciliacion,
+  TipoPagoCuota,
   VentaRow,
 } from "./types";
 
@@ -56,6 +57,7 @@ export function reconcile(
       casheaBs,
       bncBs,
       pagado: casheaBs !== null && bncBs !== null && amountsMatch(casheaBs, bncBs),
+      tipoPago: classifyTipoPago(m, casheaBs, venta.cuotaPendienteUsd),
     });
   }
 
@@ -73,6 +75,19 @@ export function reconcile(
     diferencia: totalBnc - totalCashea,
     filas,
   };
+}
+
+function classifyTipoPago(
+  merchant: MerchantRow | undefined,
+  casheaBs: number | null,
+  cuotaPendienteUsd: number
+): TipoPagoCuota | null {
+  if (!merchant || casheaBs === null || casheaBs <= 0) return null;
+  if (!merchant.tasaCambio || merchant.tasaCambio <= 0) return null;
+
+  const pagadoUsd = casheaBs / merchant.tasaCambio;
+  if (amountsMatch(pagadoUsd, cuotaPendienteUsd)) return "Pago completo";
+  return "Abono";
 }
 
 function findBancoCandidates(
