@@ -3,11 +3,10 @@ import { formatMontoUnificado } from "../utils/amounts";
 import { ResumenTransferencias } from "../types";
 import { TOLERANCIA_BS } from "../reconcile-transferencias";
 
-const COLS = 10;
+const COLS = 11;
 const GREY_HEADER = "FFE8E8E8";
 const GREY_ROW = "FFF5F5F5";
 const GREEN = "FF008000";
-const RED = "FFFF0000";
 const ORANGE = "FFC05600";
 const BLACK = "FF000000";
 const WHITE = "FFFFFFFF";
@@ -52,6 +51,7 @@ export async function exportTransferencias(
     "Monto",
     "Banco",
     "Referencia",
+    "Descripción",
     "Monto edo. cta.",
     "Dif.",
     "Conciliado",
@@ -65,13 +65,14 @@ export async function exportTransferencias(
     cell.font = { bold: true, size: 10, color: { argb: BLACK } };
     cell.fill = solidFill(GREY_HEADER);
     cell.alignment = {
-      horizontal: i === 4 || i === 7 || i === 8 ? "right" : i === 9 ? "center" : "left",
+      horizontal:
+        i === 4 || i === 8 || i === 9 ? "right" : i === 10 ? "center" : "left",
       vertical: "middle",
     };
     cell.border = thinBorder();
   });
 
-  sheet.autoFilter = { from: `A${headerRow}`, to: `J${headerRow}` };
+  sheet.autoFilter = { from: `A${headerRow}`, to: `K${headerRow}` };
 
   resumen.filas.forEach((fila, idx) => {
     const rowNum = headerRow + 1 + idx;
@@ -95,6 +96,7 @@ export async function exportTransferencias(
       formatMontoUnificado(fila.montoTransferencia),
       fila.banco,
       fila.referencia,
+      fila.descripcion,
       formatMontoUnificado(fila.montoEstadoCuenta),
       fila.conDiferencia && fila.diferencia !== null
         ? formatMontoUnificado(fila.diferencia)
@@ -109,14 +111,14 @@ export async function exportTransferencias(
       cell.font = { size: 10, color: { argb: BLACK } };
       cell.fill = solidFill(rowFill);
 
-      if (i === 4 || i === 7) {
+      if (i === 4 || i === 8) {
         cell.alignment = { horizontal: "right", vertical: "middle" };
-      } else if (i === 8) {
+      } else if (i === 9) {
         cell.alignment = { horizontal: "right", vertical: "middle" };
         if (fila.conDiferencia) {
           cell.font = { bold: true, size: 10, color: { argb: ORANGE } };
         }
-      } else if (i === 9) {
+      } else if (i === 10) {
         cell.alignment = { horizontal: "center", vertical: "middle" };
         if (fila.conDiferencia) {
           cell.font = { bold: true, size: 13, color: { argb: ORANGE } };
@@ -133,12 +135,13 @@ export async function exportTransferencias(
   sheet.columns = [
     { width: 12 },
     { width: 16 },
-    { width: 22 },
+    { width: 20 },
     { width: 10 },
     { width: 12 },
     { width: 18 },
-    { width: 16 },
-    { width: 15 },
+    { width: 14 },
+    { width: 28 },
+    { width: 14 },
     { width: 10 },
     { width: 11 },
     { width: 2 },
@@ -178,8 +181,8 @@ function buildSummaryBox(
 
   rows.forEach((item, i) => {
     const r = startRow + i;
-    const labelCell = sheet.getCell(`L${r}`);
-    const valueCell = sheet.getCell(`M${r}`);
+    const labelCell = sheet.getCell(`M${r}`);
+    const valueCell = sheet.getCell(`N${r}`);
 
     labelCell.value = item.label;
     labelCell.font = { bold: true, size: 10 };

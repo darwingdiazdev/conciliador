@@ -10,7 +10,7 @@ import { unificarMonto } from "../utils/amounts";
 import { TransferenciaRow } from "../types";
 
 /**
- * Layout típico del archivo de transferencias del día:
+ * Layout del archivo de transferencias del día:
  * A Fecha | B Sucursal | C Razón social | D Ticket | E Monto | F Banco | G Referencia
  */
 const LAYOUT = {
@@ -53,7 +53,7 @@ export async function parseTransferencias(
       ticket: formatTicket(row[cols.ticket]),
       monto,
       banco: cellToString(row[cols.banco] ?? ""),
-      referencia: cellToString(row[cols.referencia] ?? ""),
+      referencia: formatReferencia(row[cols.referencia]),
     });
   }
 
@@ -67,30 +67,26 @@ export async function parseTransferencias(
 }
 
 function resolveColumns(headers: string[]) {
+  const normalized = headers.map(normalizeHeader);
+  const joined = normalized.join(" ");
+
+  // Archivo estándar de transferencias del día → usar orden fijo
+  if (
+    joined.includes("sucursal") &&
+    (joined.includes("ticket") || joined.includes("razonsocial") || joined.includes("razon"))
+  ) {
+    return { ...LAYOUT };
+  }
+
   const byName = {
     fecha: findColumnIndex(headers, ["fecha"]),
     sucursal: findColumnIndex(headers, ["sucursal"]),
-    razonSocial: findColumnIndex(headers, [
-      "razonsocial",
-      "razonso",
-      "empresa",
-    ]),
+    razonSocial: findColumnIndex(headers, ["razonsocial", "razonso", "empresa"]),
     ticket: findColumnIndex(headers, ["ticket"]),
     monto: findColumnIndex(headers, ["monto", "importe"]),
     banco: findColumnIndex(headers, ["banco"]),
-    referencia: findExactOrIncludes(headers, ["referencia"]),
+    referencia: findExactReferencia(normalized),
   };
-
-  // Si faltan columnas clave, usar el orden fijo del archivo de transferencias
-  const missingCore =
-    byName.sucursal < 0 ||
-    byName.razonSocial < 0 ||
-    byName.ticket < 0 ||
-    byName.banco < 0;
-
-  if (missingCore && looksLikeTransferenciasLayout(headers)) {
-    return { ...LAYOUT };
-  }
 
   return {
     fecha: byName.fecha >= 0 ? byName.fecha : LAYOUT.fecha,
@@ -105,35 +101,17 @@ function resolveColumns(headers: string[]) {
   };
 }
 
-function looksLikeTransferenciasLayout(headers: string[]): boolean {
-  const joined = headers.map(normalizeHeader).join(" ");
-  return (
-    joined.includes("sucursal") ||
-    joined.includes("ticket") ||
-    joined.includes("banco")
-  );
-}
-
-function findExactOrIncludes(headers: string[], matchers: string[]): number {
-  const normalized = headers.map(normalizeHeader);
-  for (const matcher of matchers) {
-    const exact = normalized.findIndex((h) => h === matcher);
-    if (exact >= 0) return exact;
-  }
-  for (const matcher of matchers) {
-    const idx = normalized.findIndex((h) => h.includes(matcher));
-    if (idx >= 0) return idx;
-  }
-  return -1;
+function findExactReferencia(normalized: string[]): number {
+  const exact = normalized.findIndex((h) => h === "referencia");
+  if (exact >= 0) return exact;
+  return normalized.findIndex((h) => h.includes("referencia"));
 }
 
 function formatTicket(value: unknown): string {
   if (value === null || value === undefined || value === "") return "";
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return "";
-    return Number.isInteger(value)
-      ? String(value)
-      : String(Math.round(value));
+    return String(Math.round(value));
   }
   const str = String(value).trim();
   if (/e\+/i.test(str)) {
@@ -141,6 +119,16 @@ function formatTicket(value: unknown): string {
     if (Number.isFinite(n)) return String(Math.round(n));
   }
   return str;
+}
+
+function formatReferencia(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return "";
+    // Conservar decimales si los tiene (ej. 3911.72)
+    return Number.isInteger(value) ? String(value) : String(value);
+  }
+  return String(value).trim();
 }
 
 function detectHeaderRowTransferencias(
