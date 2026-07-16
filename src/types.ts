@@ -67,7 +67,6 @@ export interface TransferenciaRow {
   monto: number;
   banco: string;
   referencia: string;
-  transferenciaPrevia: string;
 }
 
 export interface TransferenciaConciliacionRow {
@@ -78,7 +77,6 @@ export interface TransferenciaConciliacionRow {
   montoTransferencia: number;
   banco: string;
   referencia: string;
-  transferenciaPrevia: string;
   montoEstadoCuenta: number | null;
   diferencia: number | null;
   /** Exacto = true; con diferencia dentro de tolerancia = true pero con alerta en Excel */
