@@ -3,7 +3,7 @@ import { formatMontoUnificado } from "../utils/amounts";
 import { ResumenTransferencias } from "../types";
 import { TOLERANCIA_BS } from "../reconcile-transferencias";
 
-const COLS = 10;
+const COLS = 11;
 const GREY_HEADER = "FFE8E8E8";
 const GREY_ROW = "FFF5F5F5";
 const GREEN = "FF008000";
@@ -12,6 +12,7 @@ const ORANGE = "FFC05600";
 const BLACK = "FF000000";
 const WHITE = "FFFFFFFF";
 const BLUE_SOFT = "FFEBF4FF";
+const YELLOW_ALERT = "FFFFF3CD";
 
 export async function exportTransferencias(
   resumen: ResumenTransferencias
@@ -34,7 +35,7 @@ export async function exportTransferencias(
 
   sheet.getRow(2).height = 18;
   mergeAndStyle(sheet, `A2:${lastCol}2`, {
-    value: `Tolerancia de diferencia: hasta ${TOLERANCIA_BS} Bs`,
+    value: `Tolerancia: hasta ${TOLERANCIA_BS} Bs · ✓ exacto · ⚠ con diferencia`,
     font: { size: 10, color: { argb: BLACK } },
     alignment: { horizontal: "center", vertical: "middle" },
   });
@@ -48,9 +49,10 @@ export async function exportTransferencias(
     "Sucursal",
     "Razón social",
     "Ticket",
-    "Monto transf.",
+    "Monto",
     "Banco",
     "Referencia",
+    "Transferencia Previa",
     "Monto edo. cta.",
     "Dif.",
     "Conciliado",
@@ -64,13 +66,13 @@ export async function exportTransferencias(
     cell.font = { bold: true, size: 10, color: { argb: BLACK } };
     cell.fill = solidFill(GREY_HEADER);
     cell.alignment = {
-      horizontal: i >= 4 && i <= 8 ? "right" : i === 9 ? "center" : "left",
+      horizontal: i === 4 || i === 8 || i === 9 ? "right" : i === 10 ? "center" : "left",
       vertical: "middle",
     };
     cell.border = thinBorder();
   });
 
-  sheet.autoFilter = { from: `A${headerRow}`, to: `J${headerRow}` };
+  sheet.autoFilter = { from: `A${headerRow}`, to: `K${headerRow}` };
 
   resumen.filas.forEach((fila, idx) => {
     const rowNum = headerRow + 1 + idx;
@@ -78,6 +80,13 @@ export async function exportTransferencias(
     row.height = 18;
     const isAlt = idx % 2 === 1;
     const rowFill = isAlt ? GREY_ROW : WHITE;
+
+    let estadoIcon = "";
+    if (fila.conciliado && fila.conDiferencia) {
+      estadoIcon = "⚠";
+    } else if (fila.conciliado) {
+      estadoIcon = "✓";
+    }
 
     const values: (string | number)[] = [
       fila.fecha,
@@ -87,13 +96,12 @@ export async function exportTransferencias(
       formatMontoUnificado(fila.montoTransferencia),
       fila.banco,
       fila.referencia,
+      fila.transferenciaPrevia,
       formatMontoUnificado(fila.montoEstadoCuenta),
-      fila.diferencia === null
-        ? ""
-        : fila.diferencia === 0
-          ? ""
-          : formatMontoUnificado(fila.diferencia),
-      fila.conciliado ? "✓" : "",
+      fila.conDiferencia && fila.diferencia !== null
+        ? formatMontoUnificado(fila.diferencia)
+        : "",
+      estadoIcon,
     ];
 
     values.forEach((v, i) => {
@@ -103,16 +111,19 @@ export async function exportTransferencias(
       cell.font = { size: 10, color: { argb: BLACK } };
       cell.fill = solidFill(rowFill);
 
-      if (i === 4 || i === 7) {
+      if (i === 4 || i === 8) {
         cell.alignment = { horizontal: "right", vertical: "middle" };
-      } else if (i === 8) {
+      } else if (i === 9) {
         cell.alignment = { horizontal: "right", vertical: "middle" };
-        if (fila.diferencia !== null && fila.diferencia !== 0) {
+        if (fila.conDiferencia) {
           cell.font = { bold: true, size: 10, color: { argb: ORANGE } };
         }
-      } else if (i === 9) {
+      } else if (i === 10) {
         cell.alignment = { horizontal: "center", vertical: "middle" };
-        if (fila.conciliado) {
+        if (fila.conDiferencia) {
+          cell.font = { bold: true, size: 13, color: { argb: ORANGE } };
+          cell.fill = solidFill(YELLOW_ALERT);
+        } else if (fila.conciliado) {
           cell.font = { bold: true, size: 13, color: { argb: GREEN } };
         }
       } else {
@@ -126,11 +137,12 @@ export async function exportTransferencias(
     { width: 16 },
     { width: 22 },
     { width: 10 },
-    { width: 15 },
+    { width: 12 },
     { width: 18 },
     { width: 16 },
+    { width: 18 },
     { width: 15 },
-    { width: 12 },
+    { width: 10 },
     { width: 11 },
     { width: 2 },
     { width: 22 },
@@ -146,6 +158,9 @@ function buildSummaryBox(
   startRow: number,
   resumen: ResumenTransferencias
 ) {
+  const conDif = resumen.filas.filter((f) => f.conDiferencia).length;
+  const exactas = resumen.conciliadas - conDif;
+
   const rows = [
     {
       label: "TRANSFERENCIAS",
@@ -158,16 +173,16 @@ function buildSummaryBox(
       color: BLACK,
     },
     {
-      label: "CONCILIADAS / TOTAL",
-      value: `${resumen.conciliadas} / ${resumen.filas.length}`,
-      color: resumen.sinConciliar > 0 ? RED : GREEN,
+      label: "✓ / ⚠ / TOTAL",
+      value: `${exactas} / ${conDif} / ${resumen.filas.length}`,
+      color: resumen.sinConciliar > 0 || conDif > 0 ? ORANGE : GREEN,
     },
   ];
 
   rows.forEach((item, i) => {
     const r = startRow + i;
-    const labelCell = sheet.getCell(`L${r}`);
-    const valueCell = sheet.getCell(`M${r}`);
+    const labelCell = sheet.getCell(`M${r}`);
+    const valueCell = sheet.getCell(`N${r}`);
 
     labelCell.value = item.label;
     labelCell.font = { bold: true, size: 10 };

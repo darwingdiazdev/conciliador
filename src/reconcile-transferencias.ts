@@ -22,6 +22,7 @@ export function reconcileTransferencias(
       usados.add(match.index);
       const diferencia =
         Math.round((match.row.monto - t.monto) * 100) / 100;
+      const conDiferencia = diferencia !== 0;
       filas.push({
         fecha: t.fecha,
         sucursal: t.sucursal,
@@ -30,9 +31,11 @@ export function reconcileTransferencias(
         montoTransferencia: t.monto,
         banco: t.banco,
         referencia: t.referencia,
+        transferenciaPrevia: t.transferenciaPrevia,
         montoEstadoCuenta: match.row.monto,
-        diferencia: diferencia === 0 ? 0 : diferencia,
+        diferencia: conDiferencia ? diferencia : 0,
         conciliado: true,
+        conDiferencia,
       });
     } else {
       filas.push({
@@ -43,9 +46,11 @@ export function reconcileTransferencias(
         montoTransferencia: t.monto,
         banco: t.banco,
         referencia: t.referencia,
+        transferenciaPrevia: t.transferenciaPrevia,
         montoEstadoCuenta: null,
         diferencia: null,
         conciliado: false,
+        conDiferencia: false,
       });
     }
   }
