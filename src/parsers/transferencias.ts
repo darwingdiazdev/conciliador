@@ -5,7 +5,7 @@ import {
   findColumnIndex,
   bufferToRows,
 } from "../utils/excel-helpers";
-import { parseMontoFlexible } from "../utils/amounts";
+import { unificarMonto } from "../utils/amounts";
 import { TransferenciaRow } from "../types";
 
 export async function parseTransferencias(
@@ -40,7 +40,8 @@ export async function parseTransferencias(
     const row = allRows[i];
     if (!row || row.every((c) => c === null || c === "")) continue;
 
-    const monto = parseMontoFlexible(row[colMonto]);
+    // Unifica 3,250.00 → 3250.00 antes de conciliar
+    const monto = unificarMonto(row[colMonto]);
     if (Number.isNaN(monto) || monto <= 0) continue;
 
     transferencias.push({

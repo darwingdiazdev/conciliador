@@ -5,7 +5,7 @@ import {
   findColumnIndex,
   bufferToRows,
 } from "../utils/excel-helpers";
-import { parseMontoFlexible } from "../utils/amounts";
+import { unificarMonto } from "../utils/amounts";
 import { EstadoCuentaRow } from "../types";
 
 export async function parseEstadoCuenta(buffer: Buffer): Promise<EstadoCuentaRow[]> {
@@ -41,14 +41,15 @@ export async function parseEstadoCuenta(buffer: Buffer): Promise<EstadoCuentaRow
       continue;
     }
 
-    const monto = parseMontoFlexible(row[colMonto]);
+    // Unifica 3.250,00 → 3250.00 antes de conciliar
+    const monto = unificarMonto(row[colMonto]);
     if (Number.isNaN(monto) || monto <= 0) continue;
 
     movimientos.push({
       fecha: colFecha >= 0 ? cellToDateString(row[colFecha]) : "",
       descripcion,
       monto,
-      saldo: colSaldo >= 0 ? parseMontoFlexible(row[colSaldo]) : 0,
+      saldo: colSaldo >= 0 ? unificarMonto(row[colSaldo]) : 0,
     });
   }
 

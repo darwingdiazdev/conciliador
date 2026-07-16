@@ -10,29 +10,86 @@ export function parseMonto(value: unknown): number {
   return parseFloat(str);
 }
 
-/** Parsea montos en formato VE/EU (1.250,00) o US (1,250.00 / 1250.00). */
+/**
+ * Unifica montos de ambos formatos a un número comparable:
+ *   - Europeo / VE: 3.250,00  →  3250.00
+ *   - US:           3,250.00  →  3250.00
+ *   - Solo miles EU: 3.250    →  3250.00
+ * Resultado canónico: miles con coma, decimales con punto (3,250.00).
+ */
+export function unificarMonto(value: unknown): number {
+  const n = parseMontoFlexible(value);
+  if (Number.isNaN(n)) return NaN;
+  return Math.round(n * 100) / 100;
+}
+
+/** Parsea montos en formato VE/EU (3.250,00) o US (3,250.00 / 3250.00). */
 export function parseMontoFlexible(value: unknown): number {
   if (value === null || value === undefined || value === "") return NaN;
   if (typeof value === "number") return value;
 
   let str = String(value)
+    .replace(/\u00a0/g, " ")
     .replace(/[+]/g, "")
     .replace(/Bs\.?S\.?/gi, "")
     .replace(/\$/g, "")
     .trim();
 
-  const lastComma = str.lastIndexOf(",");
-  const lastDot = str.lastIndexOf(".");
+  if (!str) return NaN;
 
-  if (lastComma > lastDot) {
-    // Formato europeo: 1.250,00
-    str = str.replace(/\./g, "").replace(",", ".");
-  } else {
-    // Formato US o sin miles: 1,250.00 / 1250.00
-    str = str.replace(/,/g, "");
+  // Negativos con paréntesis: (1.250,00)
+  let negative = false;
+  if (/^\(.*\)$/.test(str)) {
+    negative = true;
+    str = str.slice(1, -1).trim();
+  }
+  if (str.startsWith("-")) {
+    negative = true;
+    str = str.slice(1).trim();
   }
 
-  return parseFloat(str);
+  const hasComma = str.includes(",");
+  const hasDot = str.includes(".");
+
+  if (hasComma && hasDot) {
+    const lastComma = str.lastIndexOf(",");
+    const lastDot = str.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      // 3.250,00 → europeo
+      str = str.replace(/\./g, "").replace(",", ".");
+    } else {
+      // 3,250.00 → US
+      str = str.replace(/,/g, "");
+    }
+  } else if (hasComma && !hasDot) {
+    // Solo comas: 3250,00 (decimal EU) o 3,250 (miles US)
+    const parts = str.split(",");
+    if (parts.length === 2 && parts[1].length <= 2) {
+      str = `${parts[0].replace(/\./g, "")}.${parts[1]}`;
+    } else {
+      str = str.replace(/,/g, "");
+    }
+  } else if (hasDot && !hasComma) {
+    // Solo puntos: 3250.00 (decimal US) o 3.250 / 1.250.000 (miles EU)
+    if (/^\d{1,3}(\.\d{3})+$/.test(str)) {
+      // Miles europeos sin decimales: 3.250 → 3250
+      str = str.replace(/\./g, "");
+    }
+    // Si es 3250.00 o 3.25, se deja: parseFloat lo interpreta bien
+  }
+
+  const n = parseFloat(str);
+  if (Number.isNaN(n)) return NaN;
+  return negative ? -n : n;
+}
+
+/** Formato canónico: 3,250.00 (coma miles, punto decimales). */
+export function formatMontoUnificado(amount: number | null): string {
+  if (amount === null || Number.isNaN(amount)) return "";
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function amountsMatch(a: number, b: number, epsilon = 0.02): boolean {

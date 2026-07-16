@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { formatBs } from "../utils/amounts";
+import { formatMontoUnificado } from "../utils/amounts";
 import { ResumenTransferencias } from "../types";
 import { TOLERANCIA_BS } from "../reconcile-transferencias";
 
@@ -84,15 +84,15 @@ export async function exportTransferencias(
       fila.sucursal,
       fila.razonSocial,
       fila.ticket,
-      formatBs(fila.montoTransferencia),
+      formatMontoUnificado(fila.montoTransferencia),
       fila.banco,
       fila.referencia,
-      formatBs(fila.montoEstadoCuenta),
+      formatMontoUnificado(fila.montoEstadoCuenta),
       fila.diferencia === null
         ? ""
         : fila.diferencia === 0
           ? ""
-          : formatBs(fila.diferencia),
+          : formatMontoUnificado(fila.diferencia),
       fila.conciliado ? "✓" : "",
     ];
 
@@ -149,12 +149,12 @@ function buildSummaryBox(
   const rows = [
     {
       label: "TRANSFERENCIAS",
-      value: formatBs(resumen.totalTransferencias),
+      value: formatMontoUnificado(resumen.totalTransferencias),
       color: BLACK,
     },
     {
       label: "CONCILIADAS EN BANCO",
-      value: formatBs(resumen.totalEstadoCuenta),
+      value: formatMontoUnificado(resumen.totalEstadoCuenta),
       color: BLACK,
     },
     {
