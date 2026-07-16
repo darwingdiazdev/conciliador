@@ -11,6 +11,7 @@ import { reconcileTransferencias } from "./reconcile-transferencias";
 import { COMPANIES } from "./constants/companies";
 import { exportConciliacion } from "./export/excel";
 import { exportTransferencias } from "./export/excel-transferencias";
+import { detectArchivoKind } from "./utils/detect-file-kind";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -102,9 +103,32 @@ app.post(
         return;
       }
 
+      // Autodetectar y corregir si los archivos vienen intercambiados
+      let estadoBuf = estadoFile.buffer;
+      let transfBuf = transfFile.buffer;
+      const kindA = detectArchivoKind(estadoBuf);
+      const kindB = detectArchivoKind(transfBuf);
+
+      if (kindA === "transferencias" && kindB === "estadoCuenta") {
+        estadoBuf = transfFile.buffer;
+        transfBuf = estadoFile.buffer;
+      } else if (kindA === "transferencias" && kindB !== "estadoCuenta") {
+        res.status(400).json({
+          error:
+            'En "Estado de cuenta" subiste el archivo de transferencias. Sube el de movimientos (Fecha, Descripción, Monto, Saldo).',
+        });
+        return;
+      } else if (kindB === "estadoCuenta" && kindA !== "transferencias") {
+        res.status(400).json({
+          error:
+            'En "Transferencias" subiste el estado de cuenta. Sube el de transferencias del día (Sucursal, Ticket, Banco…).',
+        });
+        return;
+      }
+
       const [estadoCuenta, transferencias] = await Promise.all([
-        parseEstadoCuenta(estadoFile.buffer),
-        parseTransferencias(transfFile.buffer),
+        parseEstadoCuenta(estadoBuf),
+        parseTransferencias(transfBuf),
       ]);
 
       const resumen = reconcileTransferencias(transferencias, estadoCuenta);

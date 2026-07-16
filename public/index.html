@@ -400,8 +400,8 @@
       <p class="subtitle">Estado de cuenta + transferencias del día → reporte Excel</p>
 
       <div class="hint">
-        Los montos se unifican primero (<strong>3,250.00</strong>) aunque un archivo traiga <strong>3.250,00</strong> y el otro <strong>3,250.00</strong>.
-        Luego se cruzan con tolerancia de hasta <strong>20 Bs</strong>; si hay diferencia pequeña, aparece en <strong>Dif.</strong>
+        <strong>1)</strong> Movimientos / estado de cuenta → Fecha, Descripción, Monto, Saldo<br />
+        <strong>2)</strong> Transferencias del día → Fecha, Sucursal, Razón social, Ticket, Monto, Banco, Referencia
       </div>
 
       <div class="steps">
@@ -411,19 +411,19 @@
 
       <form id="form-transferencias">
         <div class="field">
-          <label>Estado de cuenta (.xls / .xlsx)</label>
+          <label>1. Estado de cuenta / Movimientos (.xls)</label>
           <label class="file-input" id="drop-estado">
             <span class="file-icon">🏦</span>
-            <span class="file-name" id="name-estado">Seleccionar o arrastrar archivo</span>
+            <span class="file-name" id="name-estado">Ej: Movimientos_cuentas…</span>
             <input type="file" name="estadoCuenta" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
           </label>
         </div>
 
         <div class="field">
-          <label>Transferencias del día (.xlsx)</label>
+          <label>2. Transferencias del día (.xlsx)</label>
           <label class="file-input" id="drop-transf">
             <span class="file-icon">📋</span>
-            <span class="file-name" id="name-transf">Seleccionar o arrastrar archivo</span>
+            <span class="file-name" id="name-transf">Ej: Transferencias…</span>
             <input type="file" name="transferencias" accept=".xls,.xlsx" required />
           </label>
         </div>

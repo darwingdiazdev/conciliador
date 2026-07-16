@@ -70,12 +70,11 @@ export function parseMontoFlexible(value: unknown): number {
       str = str.replace(/,/g, "");
     }
   } else if (hasDot && !hasComma) {
-    // Solo puntos: 3250.00 (decimal US) o 3.250 / 1.250.000 (miles EU)
-    if (/^\d{1,3}(\.\d{3})+$/.test(str)) {
-      // Miles europeos sin decimales: 3.250 → 3250
+    // Varios grupos de miles europeos: 1.250.000
+    if (/^\d{1,3}(\.\d{3}){2,}$/.test(str)) {
       str = str.replace(/\./g, "");
     }
-    // Si es 3250.00 o 3.25, se deja: parseFloat lo interpreta bien
+    // Un solo punto (3.121 / 3250.00 / 1.25) → decimal US; NO tratar como miles
   }
 
   const n = parseFloat(str);

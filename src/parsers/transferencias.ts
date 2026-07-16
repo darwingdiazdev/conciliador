@@ -70,7 +70,17 @@ function resolveColumns(headers: string[]) {
   const normalized = headers.map(normalizeHeader);
   const joined = normalized.join(" ");
 
-  // Archivo estándar de transferencias del día → usar orden fijo
+  // Debe ser el archivo de transferencias (Sucursal, Ticket, Banco…)
+  if (
+    !joined.includes("sucursal") ||
+    (!joined.includes("ticket") && !joined.includes("banco"))
+  ) {
+    throw new Error(
+      'El archivo de transferencias no es válido. Debe tener columnas como Fecha, Sucursal, Razón social, Ticket, Monto, Banco y Referencia. ¿Subiste el estado de cuenta en ese campo por error?'
+    );
+  }
+
+  // Archivo estándar → orden fijo
   if (
     joined.includes("sucursal") &&
     (joined.includes("ticket") || joined.includes("razonsocial") || joined.includes("razon"))
@@ -88,13 +98,19 @@ function resolveColumns(headers: string[]) {
     referencia: findExactReferencia(normalized),
   };
 
+  if (byName.sucursal < 0 || byName.monto < 0) {
+    throw new Error(
+      'No se encontraron las columnas Sucursal/Monto en el archivo de transferencias.'
+    );
+  }
+
   return {
     fecha: byName.fecha >= 0 ? byName.fecha : LAYOUT.fecha,
-    sucursal: byName.sucursal >= 0 ? byName.sucursal : LAYOUT.sucursal,
+    sucursal: byName.sucursal,
     razonSocial:
       byName.razonSocial >= 0 ? byName.razonSocial : LAYOUT.razonSocial,
     ticket: byName.ticket >= 0 ? byName.ticket : LAYOUT.ticket,
-    monto: byName.monto >= 0 ? byName.monto : LAYOUT.monto,
+    monto: byName.monto,
     banco: byName.banco >= 0 ? byName.banco : LAYOUT.banco,
     referencia:
       byName.referencia >= 0 ? byName.referencia : LAYOUT.referencia,
