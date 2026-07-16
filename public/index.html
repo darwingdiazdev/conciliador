@@ -29,6 +29,8 @@
       padding: 32px;
     }
 
+    .card.wide { max-width: 600px; }
+
     h1 {
       font-size: 1.5rem;
       margin-bottom: 4px;
@@ -40,9 +42,67 @@
       margin-bottom: 28px;
     }
 
-    .field {
-      margin-bottom: 18px;
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: #4472c4;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 16px;
+      width: auto;
     }
+
+    .back-btn:hover { color: #365ea8; background: none; }
+
+    .menu-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .menu-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      width: 100%;
+      padding: 20px 22px;
+      background: #fff;
+      color: #1a202c;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+
+    .menu-btn:hover {
+      border-color: #4472c4;
+      background: #ebf4ff;
+      box-shadow: 0 4px 16px rgba(68, 114, 196, 0.12);
+    }
+
+    .menu-btn .menu-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .menu-btn .menu-desc {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #718096;
+    }
+
+    .field { margin-bottom: 18px; }
 
     label {
       display: block;
@@ -71,9 +131,7 @@
 
     .file-input input { display: none; }
 
-    .file-icon {
-      font-size: 1.4rem;
-    }
+    .file-icon { font-size: 1.4rem; }
 
     .file-name {
       font-size: 0.85rem;
@@ -113,9 +171,7 @@
       box-shadow: 0 0 0 3px rgba(68, 114, 196, 0.15);
     }
 
-    .date-field {
-      position: relative;
-    }
+    .date-field { position: relative; }
 
     .date-field input {
       padding-left: 36px;
@@ -133,7 +189,6 @@
       z-index: 1;
     }
 
-    /* Flatpickr — tema acorde al conciliador */
     .flatpickr-calendar {
       border-radius: 12px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
@@ -153,9 +208,7 @@
       font-weight: 600;
     }
 
-    .flatpickr-weekdays {
-      background: #f7fafc;
-    }
+    .flatpickr-weekdays { background: #f7fafc; }
 
     span.flatpickr-weekday {
       color: #4a5568;
@@ -175,21 +228,15 @@
       border-color: #365ea8;
     }
 
-    .flatpickr-day.today {
-      border-color: #4472c4;
-    }
+    .flatpickr-day.today { border-color: #4472c4; }
 
     .flatpickr-months .flatpickr-prev-month,
-    .flatpickr-months .flatpickr-next-month {
-      fill: #fff;
-    }
+    .flatpickr-months .flatpickr-next-month { fill: #fff; }
 
     .flatpickr-months .flatpickr-prev-month:hover svg,
-    .flatpickr-months .flatpickr-next-month:hover svg {
-      fill: #ebf4ff;
-    }
+    .flatpickr-months .flatpickr-next-month:hover svg { fill: #ebf4ff; }
 
-    button {
+    button[type="submit"] {
       width: 100%;
       padding: 14px;
       background: #4472c4;
@@ -202,8 +249,18 @@
       transition: background 0.2s;
     }
 
-    button:hover:not(:disabled) { background: #365ea8; }
-    button:disabled { background: #a0aec0; cursor: not-allowed; }
+    button[type="submit"]:hover:not(:disabled) { background: #365ea8; }
+    button[type="submit"]:disabled { background: #a0aec0; cursor: not-allowed; }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #718096;
+      margin-bottom: 18px;
+      padding: 10px 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border-left: 3px solid #4472c4;
+    }
 
     .error {
       margin-top: 16px;
@@ -247,77 +304,151 @@
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Conciliador de Pagos</h1>
-    <p class="subtitle">Ventas + Cashea + BNC → reporte Excel</p>
-
-    <div class="steps">
-      <div class="step"><span>1</span>Ventas</div>
-      <div class="step"><span>2</span>Cashea</div>
-      <div class="step"><span>3</span>BNC</div>
+  <div class="card wide">
+    <!-- HOME -->
+    <div class="view active" id="view-home">
+      <h1>Conciliador de Pagos</h1>
+      <p class="subtitle">Elige el tipo de conciliación</p>
+      <div class="menu-grid">
+        <button type="button" class="menu-btn" id="btn-cashea">
+          <span class="menu-icon">💳</span>
+          Conciliador Cashea
+          <span class="menu-desc">Ventas + Merchant Cashea + extracto BNC</span>
+        </button>
+        <button type="button" class="menu-btn" id="btn-transferencias">
+          <span class="menu-icon">🔁</span>
+          Conciliador Transferencias
+          <span class="menu-desc">Estado de cuenta + transferencias del día</span>
+        </button>
+      </div>
     </div>
 
-    <form id="form">
-      <div class="field">
-        <label>Archivo de Ventas (.xlsx)</label>
-        <label class="file-input" id="drop-ventas">
-          <span class="file-icon">📊</span>
-          <span class="file-name" id="name-ventas">Seleccionar o arrastrar archivo</span>
-          <input type="file" name="ventas" accept=".xls,.xlsx" required />
-        </label>
+    <!-- CASHEA -->
+    <div class="view" id="view-cashea">
+      <button type="button" class="back-btn" data-back>← Volver</button>
+      <h1>Conciliador Cashea</h1>
+      <p class="subtitle">Ventas + Cashea + BNC → reporte Excel</p>
+
+      <div class="steps">
+        <div class="step"><span>1</span>Ventas</div>
+        <div class="step"><span>2</span>Cashea</div>
+        <div class="step"><span>3</span>BNC</div>
       </div>
 
-      <div class="field">
-        <label>Archivo Merchant / Cashea (.xlsx)</label>
-        <label class="file-input" id="drop-merchant">
-          <span class="file-icon">💳</span>
-          <span class="file-name" id="name-merchant">Seleccionar o arrastrar archivo</span>
-          <input type="file" name="merchant" accept=".xls,.xlsx" required />
-        </label>
-      </div>
-
-      <div class="field">
-        <label>Extracto Banco BNC (.xls / .xlsx)</label>
-        <label class="file-input" id="drop-banco">
-          <span class="file-icon">🏦</span>
-          <span class="file-name" id="name-banco">Seleccionar o arrastrar archivo</span>
-          <input type="file" name="banco" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
-        </label>
-      </div>
-
-      <div class="optional">
-        <div style="grid-column: 1 / -1">
-          <label>Empresa</label>
-          <select name="empresa" required>
-            <option value="" disabled selected>Selecciona una empresa</option>
-            <option value="EMBUTIDOS FATTORIA">EMBUTIDOS FATTORIA</option>
-            <option value="MOHAN 2025">MOHAN 2025</option>
-            <option value="EMBUTIDOS MOHAN">EMBUTIDOS MOHAN</option>
-            <option value="DELICATESES EMMANUEL">DELICATESES EMMANUEL</option>
-            <option value="DELICATESES MOMOY">DELICATESES MOMOY</option>
-            <option value="DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA">DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA</option>
-          </select>
+      <form id="form-cashea">
+        <div class="field">
+          <label>Archivo de Ventas (.xlsx)</label>
+          <label class="file-input" id="drop-ventas">
+            <span class="file-icon">📊</span>
+            <span class="file-name" id="name-ventas">Seleccionar o arrastrar archivo</span>
+            <input type="file" name="ventas" accept=".xls,.xlsx" required />
+          </label>
         </div>
-        <div class="date-field">
-          <label>Rango desde (opcional)</label>
-          <input type="text" id="fechaDesde" name="fechaDesde" placeholder="Selecciona fecha" autocomplete="off" />
+
+        <div class="field">
+          <label>Archivo Merchant / Cashea (.xlsx)</label>
+          <label class="file-input" id="drop-merchant">
+            <span class="file-icon">💳</span>
+            <span class="file-name" id="name-merchant">Seleccionar o arrastrar archivo</span>
+            <input type="file" name="merchant" accept=".xls,.xlsx" required />
+          </label>
         </div>
-        <div class="date-field">
-          <label>Rango hasta (opcional)</label>
-          <input type="text" id="fechaHasta" name="fechaHasta" placeholder="Selecciona fecha" autocomplete="off" />
+
+        <div class="field">
+          <label>Extracto Banco BNC (.xls / .xlsx)</label>
+          <label class="file-input" id="drop-banco">
+            <span class="file-icon">🏦</span>
+            <span class="file-name" id="name-banco">Seleccionar o arrastrar archivo</span>
+            <input type="file" name="banco" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+          </label>
         </div>
+
+        <div class="optional">
+          <div style="grid-column: 1 / -1">
+            <label>Empresa</label>
+            <select name="empresa" required>
+              <option value="" disabled selected>Selecciona una empresa</option>
+              <option value="EMBUTIDOS FATTORIA">EMBUTIDOS FATTORIA</option>
+              <option value="MOHAN 2025">MOHAN 2025</option>
+              <option value="EMBUTIDOS MOHAN">EMBUTIDOS MOHAN</option>
+              <option value="DELICATESES EMMANUEL">DELICATESES EMMANUEL</option>
+              <option value="DELICATESES MOMOY">DELICATESES MOMOY</option>
+              <option value="DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA">DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA</option>
+            </select>
+          </div>
+          <div class="date-field">
+            <label>Rango desde (opcional)</label>
+            <input type="text" id="fechaDesde" name="fechaDesde" placeholder="Selecciona fecha" autocomplete="off" />
+          </div>
+          <div class="date-field">
+            <label>Rango hasta (opcional)</label>
+            <input type="text" id="fechaHasta" name="fechaHasta" placeholder="Selecciona fecha" autocomplete="off" />
+          </div>
+        </div>
+
+        <button type="submit" id="btn-cashea-submit">Generar conciliación</button>
+      </form>
+
+      <div class="error" id="error-cashea"></div>
+      <div class="loading" id="loading-cashea">Procesando archivos…</div>
+    </div>
+
+    <!-- TRANSFERENCIAS -->
+    <div class="view" id="view-transferencias">
+      <button type="button" class="back-btn" data-back>← Volver</button>
+      <h1>Conciliador Transferencias</h1>
+      <p class="subtitle">Estado de cuenta + transferencias del día → reporte Excel</p>
+
+      <div class="hint">
+        Relaciona montos con tolerancia de hasta <strong>20 Bs</strong>. Si hay diferencia pequeña, aparece en la columna <strong>Dif.</strong>
       </div>
 
-      <button type="submit" id="btn">Generar conciliación</button>
-    </form>
+      <div class="steps">
+        <div class="step"><span>1</span>Estado de cuenta</div>
+        <div class="step"><span>2</span>Transferencias</div>
+      </div>
 
-    <div class="error" id="error"></div>
-    <div class="loading" id="loading">Procesando archivos…</div>
+      <form id="form-transferencias">
+        <div class="field">
+          <label>Estado de cuenta (.xls / .xlsx)</label>
+          <label class="file-input" id="drop-estado">
+            <span class="file-icon">🏦</span>
+            <span class="file-name" id="name-estado">Seleccionar o arrastrar archivo</span>
+            <input type="file" name="estadoCuenta" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+          </label>
+        </div>
+
+        <div class="field">
+          <label>Transferencias del día (.xlsx)</label>
+          <label class="file-input" id="drop-transf">
+            <span class="file-icon">📋</span>
+            <span class="file-name" id="name-transf">Seleccionar o arrastrar archivo</span>
+            <input type="file" name="transferencias" accept=".xls,.xlsx" required />
+          </label>
+        </div>
+
+        <button type="submit" id="btn-transf-submit">Generar conciliación</button>
+      </form>
+
+      <div class="error" id="error-transf"></div>
+      <div class="loading" id="loading-transf">Procesando archivos…</div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
   <script>
+    function showView(id) {
+      document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    document.getElementById('btn-cashea').addEventListener('click', () => showView('view-cashea'));
+    document.getElementById('btn-transferencias').addEventListener('click', () => showView('view-transferencias'));
+    document.querySelectorAll('[data-back]').forEach((btn) => {
+      btn.addEventListener('click', () => showView('view-home'));
+    });
+
     const fpDesde = flatpickr("#fechaDesde", {
       locale: "es",
       dateFormat: "Y-m-d",
@@ -342,7 +473,7 @@
       },
     });
 
-    function setupDropzone(dropId, inputName, nameId) {
+    function setupDropzone(dropId, nameId) {
       const drop = document.getElementById(dropId);
       const input = drop.querySelector('input');
       const nameEl = document.getElementById(nameId);
@@ -380,29 +511,38 @@
       });
     }
 
-    setupDropzone('drop-ventas', 'ventas', 'name-ventas');
-    setupDropzone('drop-merchant', 'merchant', 'name-merchant');
-    setupDropzone('drop-banco', 'banco', 'name-banco');
+    setupDropzone('drop-ventas', 'name-ventas');
+    setupDropzone('drop-merchant', 'name-merchant');
+    setupDropzone('drop-banco', 'name-banco');
+    setupDropzone('drop-estado', 'name-estado');
+    setupDropzone('drop-transf', 'name-transf');
 
-    const form = document.getElementById('form');
-    const btn = document.getElementById('btn');
-    const errorEl = document.getElementById('error');
-    const loadingEl = document.getElementById('loading');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    async function submitConciliacion(form, endpoint, btn, errorEl, loadingEl) {
       errorEl.classList.remove('visible');
       loadingEl.classList.add('visible');
       btn.disabled = true;
 
-      const formData = new FormData(form);
-
       try {
-        const res = await fetch('/api/conciliar', { method: 'POST', body: formData });
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: new FormData(form),
+        });
 
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Error al procesar');
+          const text = await res.text();
+          let message = 'Error al procesar';
+          try {
+            const data = JSON.parse(text);
+            message = data.error || message;
+          } catch {
+            if (text && !text.trim().startsWith('<')) {
+              message = text.slice(0, 200);
+            } else {
+              message =
+                'El servidor no respondió correctamente. Reinicia con npm run dev e inténtalo de nuevo.';
+            }
+          }
+          throw new Error(message);
         }
 
         const blob = await res.blob();
@@ -423,6 +563,28 @@
         loadingEl.classList.remove('visible');
         btn.disabled = false;
       }
+    }
+
+    document.getElementById('form-cashea').addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitConciliacion(
+        e.target,
+        '/api/conciliar',
+        document.getElementById('btn-cashea-submit'),
+        document.getElementById('error-cashea'),
+        document.getElementById('loading-cashea')
+      );
+    });
+
+    document.getElementById('form-transferencias').addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitConciliacion(
+        e.target,
+        '/api/conciliar-transferencias',
+        document.getElementById('btn-transf-submit'),
+        document.getElementById('error-transf'),
+        document.getElementById('loading-transf')
+      );
     });
   </script>
 </body>

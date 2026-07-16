@@ -51,3 +51,42 @@ export interface ResumenConciliacion {
   diferencia: number;
   filas: ConciliacionRow[];
 }
+
+export interface EstadoCuentaRow {
+  fecha: string;
+  descripcion: string;
+  monto: number;
+  saldo: number;
+}
+
+export interface TransferenciaRow {
+  fecha: string;
+  sucursal: string;
+  razonSocial: string;
+  ticket: string;
+  monto: number;
+  banco: string;
+  referencia: string;
+  transferenciaPrevia: string;
+}
+
+export interface TransferenciaConciliacionRow {
+  fecha: string;
+  sucursal: string;
+  razonSocial: string;
+  ticket: string;
+  montoTransferencia: number;
+  banco: string;
+  referencia: string;
+  montoEstadoCuenta: number | null;
+  diferencia: number | null;
+  conciliado: boolean;
+}
+
+export interface ResumenTransferencias {
+  totalTransferencias: number;
+  totalEstadoCuenta: number;
+  conciliadas: number;
+  sinConciliar: number;
+  filas: TransferenciaConciliacionRow[];
+}

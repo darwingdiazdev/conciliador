@@ -4,9 +4,13 @@ import path from "path";
 import { parseVentas } from "./parsers/ventas";
 import { parseMerchant } from "./parsers/merchant";
 import { parseBanco } from "./parsers/banco";
+import { parseEstadoCuenta } from "./parsers/estado-cuenta";
+import { parseTransferencias } from "./parsers/transferencias";
 import { reconcile } from "./reconcile";
+import { reconcileTransferencias } from "./reconcile-transferencias";
 import { COMPANIES } from "./constants/companies";
 import { exportConciliacion } from "./export/excel";
+import { exportTransferencias } from "./export/excel-transferencias";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -64,6 +68,49 @@ app.post(
       });
 
       const filename = `conciliacion_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      res.status(400).json({ error: message });
+    }
+  }
+);
+
+app.post(
+  "/api/conciliar-transferencias",
+  upload.fields([
+    { name: "estadoCuenta", maxCount: 1 },
+    { name: "transferencias", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const files = req.files as Record<string, Express.Multer.File[]>;
+      const estadoFile = files?.estadoCuenta?.[0];
+      const transfFile = files?.transferencias?.[0];
+
+      if (!estadoFile || !transfFile) {
+        res.status(400).json({
+          error:
+            "Debes cargar los 2 archivos: estado de cuenta y transferencias del día.",
+        });
+        return;
+      }
+
+      const [estadoCuenta, transferencias] = await Promise.all([
+        parseEstadoCuenta(estadoFile.buffer),
+        parseTransferencias(transfFile.buffer),
+      ]);
+
+      const resumen = reconcileTransferencias(transferencias, estadoCuenta);
+      const buffer = await exportTransferencias(resumen);
+
+      const filename = `transferencias_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
       res.setHeader(
         "Content-Type",
