@@ -320,6 +320,11 @@
           Conciliador Transferencias
           <span class="menu-desc">Estado de cuenta + transferencias del día</span>
         </button>
+        <button type="button" class="menu-btn" id="btn-ordenes">
+          <span class="menu-icon">📅</span>
+          Ventas por quincena
+          <span class="menu-desc">Órdenes Cashea: vendido, cuota inicial y cuota pendiente</span>
+        </button>
       </div>
     </div>
 
@@ -434,6 +439,33 @@
       <div class="error" id="error-transf"></div>
       <div class="loading" id="loading-transf">Procesando archivos…</div>
     </div>
+
+    <!-- ORDENES POR QUINCENA -->
+    <div class="view" id="view-ordenes">
+      <button type="button" class="back-btn" data-back>← Volver</button>
+      <h1>Ventas por quincena</h1>
+      <p class="subtitle">Órdenes Cashea agrupadas del 1 al 15 y del 16 a fin de mes</p>
+
+      <div class="hint">
+        Carga el Excel de órdenes. El archivo que se descarga usa <strong>Nombre del grupo</strong> como título,
+        trae los totales por quincena y un cuadro con cada estado de la cuota (pagada, programada, en gracia).
+      </div>
+
+      <form id="form-ordenes">
+        <div class="field">
+          <label>Archivo de órdenes (.xlsx)</label>
+          <label class="file-input" id="drop-ordenes">
+            <span class="file-icon">📊</span>
+            <span class="file-name" id="name-ordenes">Seleccionar o arrastrar archivo</span>
+            <input type="file" name="ordenes" accept=".xls,.xlsx" required />
+          </label>
+        </div>
+        <button type="submit" id="btn-ordenes-submit">Generar Excel</button>
+      </form>
+
+      <div class="error" id="error-ordenes"></div>
+      <div class="loading" id="loading-ordenes">Procesando archivo…</div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -446,6 +478,7 @@
 
     document.getElementById('btn-cashea').addEventListener('click', () => showView('view-cashea'));
     document.getElementById('btn-transferencias').addEventListener('click', () => showView('view-transferencias'));
+    document.getElementById('btn-ordenes').addEventListener('click', () => showView('view-ordenes'));
     document.querySelectorAll('[data-back]').forEach((btn) => {
       btn.addEventListener('click', () => showView('view-home'));
     });
@@ -517,6 +550,7 @@
     setupDropzone('drop-banco', 'name-banco');
     setupDropzone('drop-estado', 'name-estado');
     setupDropzone('drop-transf', 'name-transf');
+    setupDropzone('drop-ordenes', 'name-ordenes');
 
     async function submitConciliacion(form, endpoint, btn, errorEl, loadingEl) {
       errorEl.classList.remove('visible');
@@ -585,6 +619,17 @@
         document.getElementById('btn-transf-submit'),
         document.getElementById('error-transf'),
         document.getElementById('loading-transf')
+      );
+    });
+
+    document.getElementById('form-ordenes').addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitConciliacion(
+        e.target,
+        '/api/ordenes-quincenas',
+        document.getElementById('btn-ordenes-submit'),
+        document.getElementById('error-ordenes'),
+        document.getElementById('loading-ordenes')
       );
     });
   </script>

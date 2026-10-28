@@ -12,6 +12,8 @@ import { COMPANIES } from "./constants/companies";
 import { exportConciliacion } from "./export/excel";
 import { exportTransferencias } from "./export/excel-transferencias";
 import { detectArchivoKind } from "./utils/detect-file-kind";
+import { resumirOrdenesPorQuincena } from "./parsers/ordenes";
+import { exportOrdenesQuincenas } from "./export/excel-ordenes";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -135,6 +137,33 @@ app.post(
       const buffer = await exportTransferencias(resumen);
 
       const filename = `transferencias_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      res.status(400).json({ error: message });
+    }
+  }
+);
+
+app.post(
+  "/api/ordenes-quincenas",
+  upload.single("ordenes"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: "Debes cargar el archivo de órdenes." });
+        return;
+      }
+
+      const reporte = await resumirOrdenesPorQuincena(req.file.buffer);
+      const buffer = await exportOrdenesQuincenas(reporte);
+      const filename = `quincenas_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
       res.setHeader(
         "Content-Type",

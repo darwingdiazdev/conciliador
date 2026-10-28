@@ -93,3 +93,37 @@ export interface ResumenTransferencias {
   sinConciliar: number;
   filas: TransferenciaConciliacionRow[];
 }
+
+export interface QuincenaTotales {
+  ordenes: number;
+  totalVendido: number;
+  totalCuotaInicial: number;
+  totalCuotaPendiente: number;
+}
+
+export interface QuincenaRow extends QuincenaTotales {
+  clave: string;
+  etiqueta: string;
+}
+
+export interface EstadoCuotaResumen {
+  estado: string;
+  ordenes: number;
+  totalVendido: number;
+  totalCuotaInicial: number;
+  montoCuota: number;
+}
+
+export interface ResumenQuincenas {
+  empresa: string;
+  desde: string;
+  hasta: string;
+  quincenas: QuincenaRow[];
+  totales: QuincenaTotales;
+  ordenesCanceladas: number;
+  estados: EstadoCuotaResumen[];
+}
+
+export interface ReporteOrdenes {
+  grupos: ResumenQuincenas[];
+}
