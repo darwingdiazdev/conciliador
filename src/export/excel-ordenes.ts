@@ -1,8 +1,8 @@
 import ExcelJS from "exceljs";
 import { ReporteOrdenes, ResumenQuincenas } from "../types";
 
-const BLUE = "FF4472C4";
-const BLUE_SOFT = "FFE8F0FE";
+const ORANGE = "FFE8590C";
+const ORANGE_SOFT = "FFFFF1E6";
 const GREY = "FFF2F2F2";
 const WHITE = "FFFFFFFF";
 const BLACK = "FF000000";
@@ -37,7 +37,7 @@ function writeGrupo(sheet: ExcelJS.Worksheet, grupo: ResumenQuincenas): void {
     bold: true,
     size: 16,
     color: { argb: WHITE },
-  }, BLUE);
+  }, ORANGE);
 
   sheet.getRow(2).height = 18;
   merge(
@@ -126,7 +126,7 @@ function traducirEstado(estado: string): string {
 function writeSection(sheet: ExcelJS.Worksheet, row: number, title: string): number {
   const current = sheet.getRow(row);
   current.height = 20;
-  merge(sheet, `A${row}:E${row}`, title, { bold: true, size: 12, color: { argb: BLACK } }, BLUE_SOFT);
+  merge(sheet, `A${row}:E${row}`, title, { bold: true, size: 12, color: { argb: BLACK } }, ORANGE_SOFT);
   return row + 1;
 }
 
@@ -143,7 +143,7 @@ function writeTable(
     const cell = header.getCell(index + 1);
     cell.value = label;
     cell.font = { bold: true, size: 10, color: { argb: WHITE } };
-    cell.fill = fill(BLUE);
+    cell.fill = fill(ORANGE);
     cell.alignment = {
       horizontal: index === 0 ? "left" : "right",
       vertical: "middle",
@@ -157,7 +157,7 @@ function writeTable(
   });
 
   const totalRow = startRow + 1 + data.length;
-  paintRow(sheet.getRow(totalRow), total, BLUE_SOFT, true);
+  paintRow(sheet.getRow(totalRow), total, ORANGE_SOFT, true);
   return totalRow + 1;
 }
 
@@ -199,8 +199,31 @@ function fill(argb: string): ExcelJS.Fill {
 }
 
 function border(): Partial<ExcelJS.Borders> {
-  const side: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FFD0D7E2" } };
+  const side: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FFE7D3C4" } };
   return { top: side, left: side, bottom: side, right: side };
+}
+
+export function nombreArchivoQuincenas(reporte: ReporteOrdenes): string {
+  const razones = [
+    ...new Set(reporte.grupos.map((grupo) => grupo.empresa.trim()).filter(Boolean)),
+  ];
+  const fechas = reporte.grupos
+    .flatMap((grupo) => [grupo.desde, grupo.hasta])
+    .filter(Boolean)
+    .sort();
+  const desde = fechas[0] ?? "";
+  const hasta = fechas[fechas.length - 1] ?? "";
+  const fecha =
+    desde && hasta ? `${fechaArchivo(desde)} al ${fechaArchivo(hasta)}` : "";
+  const raw = ["quincenas", fecha, razones.join(", ")].filter(Boolean).join(" ");
+  const limpio = raw.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  return `${limpio.slice(0, 180)}.xlsx`;
+}
+
+function fechaArchivo(iso: string): string {
+  const [anio, mes, dia] = iso.split("-");
+  if (!anio || !mes || !dia) return iso;
+  return `${dia}-${mes}-${anio}`;
 }
 
 function formatRango(desde: string, hasta: string): string {

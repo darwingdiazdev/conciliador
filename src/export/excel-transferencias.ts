@@ -10,7 +10,7 @@ const GREEN = "FF008000";
 const ORANGE = "FFC05600";
 const BLACK = "FF000000";
 const WHITE = "FFFFFFFF";
-const BLUE_SOFT = "FFEBF4FF";
+const ORANGE_SOFT = "FFFFF1E6";
 const YELLOW_ALERT = "FFFFF3CD";
 
 export async function exportTransferencias(
@@ -28,7 +28,7 @@ export async function exportTransferencias(
   mergeAndStyle(sheet, `A1:${lastCol}1`, {
     value: "CONCILIADOR DE TRANSFERENCIAS",
     font: { bold: true, size: 14, color: { argb: BLACK } },
-    fill: BLUE_SOFT,
+    fill: ORANGE_SOFT,
     alignment: { horizontal: "center", vertical: "middle" },
   });
 
@@ -188,7 +188,7 @@ function buildSummaryBox(
     labelCell.font = { bold: true, size: 10 };
     labelCell.alignment = { horizontal: "left", vertical: "middle" };
     labelCell.border = mediumBorder();
-    labelCell.fill = solidFill(i === 0 ? BLUE_SOFT : WHITE);
+    labelCell.fill = solidFill(i === 0 ? ORANGE_SOFT : WHITE);
 
     valueCell.value = item.value;
     valueCell.font = { bold: true, size: 10, color: { argb: item.color } };

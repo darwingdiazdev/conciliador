@@ -13,7 +13,10 @@ import { exportConciliacion } from "./export/excel";
 import { exportTransferencias } from "./export/excel-transferencias";
 import { detectArchivoKind } from "./utils/detect-file-kind";
 import { resumirOrdenesPorQuincena } from "./parsers/ordenes";
-import { exportOrdenesQuincenas } from "./export/excel-ordenes";
+import {
+  exportOrdenesQuincenas,
+  nombreArchivoQuincenas,
+} from "./export/excel-ordenes";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -163,13 +166,21 @@ app.post(
 
       const reporte = await resumirOrdenesPorQuincena(req.file.buffer);
       const buffer = await exportOrdenesQuincenas(reporte);
-      const filename = `quincenas_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const filename = nombreArchivoQuincenas(reporte);
+      const ascii = filename
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\x20-\x7E]/g, "")
+        .replace(/"/g, "");
 
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+      );
       res.send(buffer);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";

@@ -51,7 +51,7 @@
       gap: 6px;
       background: none;
       border: none;
-      color: #4472c4;
+      color: #e8590c;
       font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
@@ -60,7 +60,7 @@
       width: auto;
     }
 
-    .back-btn:hover { color: #365ea8; background: none; }
+    .back-btn:hover { color: #c2410c; background: none; }
 
     .menu-grid {
       display: grid;
@@ -86,9 +86,9 @@
     }
 
     .menu-btn:hover {
-      border-color: #4472c4;
-      background: #ebf4ff;
-      box-shadow: 0 4px 16px rgba(68, 114, 196, 0.12);
+      border-color: #e8590c;
+      background: #fff1e6;
+      box-shadow: 0 4px 16px rgba(232, 89, 12, 0.16);
     }
 
     .menu-btn .menu-icon {
@@ -125,8 +125,8 @@
 
     .file-input:hover,
     .file-input.dragover {
-      border-color: #4472c4;
-      background: #ebf4ff;
+      border-color: #e8590c;
+      background: #fff1e6;
     }
 
     .file-input input { display: none; }
@@ -167,8 +167,8 @@
     .optional select:focus,
     .date-field input:focus {
       outline: none;
-      border-color: #4472c4;
-      box-shadow: 0 0 0 3px rgba(68, 114, 196, 0.15);
+      border-color: #e8590c;
+      box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.18);
     }
 
     .date-field { position: relative; }
@@ -197,7 +197,7 @@
     }
 
     .flatpickr-months .flatpickr-month {
-      background: #4472c4;
+      background: #e8590c;
       color: #fff;
       border-radius: 12px 12px 0 0;
     }
@@ -218,28 +218,28 @@
     .flatpickr-day.selected,
     .flatpickr-day.startRange,
     .flatpickr-day.endRange {
-      background: #4472c4;
-      border-color: #4472c4;
+      background: #e8590c;
+      border-color: #e8590c;
     }
 
     .flatpickr-day.selected:hover,
     .flatpickr-day:hover {
-      background: #365ea8;
-      border-color: #365ea8;
+      background: #c2410c;
+      border-color: #c2410c;
     }
 
-    .flatpickr-day.today { border-color: #4472c4; }
+    .flatpickr-day.today { border-color: #e8590c; }
 
     .flatpickr-months .flatpickr-prev-month,
     .flatpickr-months .flatpickr-next-month { fill: #fff; }
 
     .flatpickr-months .flatpickr-prev-month:hover svg,
-    .flatpickr-months .flatpickr-next-month:hover svg { fill: #ebf4ff; }
+    .flatpickr-months .flatpickr-next-month:hover svg { fill: #fff1e6; }
 
     button[type="submit"] {
       width: 100%;
       padding: 14px;
-      background: #4472c4;
+      background: #e8590c;
       color: #fff;
       border: none;
       border-radius: 8px;
@@ -249,7 +249,7 @@
       transition: background 0.2s;
     }
 
-    button[type="submit"]:hover:not(:disabled) { background: #365ea8; }
+    button[type="submit"]:hover:not(:disabled) { background: #c2410c; }
     button[type="submit"]:disabled { background: #a0aec0; cursor: not-allowed; }
 
     .hint {
@@ -259,7 +259,7 @@
       padding: 10px 12px;
       background: #f7fafc;
       border-radius: 8px;
-      border-left: 3px solid #4472c4;
+      border-left: 3px solid #e8590c;
     }
 
     .error {
@@ -582,8 +582,13 @@
 
         const blob = await res.blob();
         const disposition = res.headers.get('Content-Disposition') || '';
-        const match = disposition.match(/filename="(.+)"/);
-        const filename = match ? match[1] : 'conciliacion.xlsx';
+        const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        const quoted = disposition.match(/filename="([^"]+)"/);
+        const filename = encoded
+          ? decodeURIComponent(encoded[1])
+          : quoted
+            ? quoted[1]
+            : 'conciliacion.xlsx';
 
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
