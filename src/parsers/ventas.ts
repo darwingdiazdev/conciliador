@@ -3,6 +3,7 @@ import {
   cellToFactura,
   detectHeaderRow,
   findColumnIndex,
+  findTasaColumn,
   findColumnDollarSign,
   findUsdAmountColumn,
   bufferToRows,
@@ -49,13 +50,7 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
     ],
     fallbackMatchers: ["totalusd", "total"],
   });
-  const colTasa = findColumnIndex(headers, [
-    "tasadecambio",
-    "tasadecamb",
-    "tasadecam",
-    "tasacamb",
-    "tasabcv",
-  ]);
+  const colTasa = findTasaColumn(headers);
 
   if (colFactura < 0) {
     throw new Error(

@@ -8,6 +8,21 @@ export function normalizeHeader(value: unknown): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+/** Columna de tasa de cambio, sin confundirla con "Fecha Tasa de Cambio". */
+export function findTasaColumn(headers: string[]): number {
+  const normalized = headers.map(normalizeHeader);
+  let fallback = -1;
+
+  for (let i = 0; i < normalized.length; i++) {
+    const header = normalized[i];
+    if (!header.includes("tasa") || header.includes("fecha")) continue;
+    if (header === "tasadecambio" || header === "tasabcv") return i;
+    if (fallback < 0) fallback = i;
+  }
+
+  return fallback;
+}
+
 export function findColumnIndex(
   headers: string[],
   matchers: string[]

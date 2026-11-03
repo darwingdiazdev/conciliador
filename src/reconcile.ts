@@ -3,6 +3,7 @@ import {
   BancoRow,
   ConciliacionRow,
   MerchantRow,
+  PendienteConfirmarRow,
   ResumenConciliacion,
   TipoPagoCuota,
   VentaRow,
@@ -14,9 +15,11 @@ export function reconcile(
   banco: BancoRow[],
   saldoFinal: number
 ): ResumenConciliacion {
-  const merchantByFactura = new Map<number, MerchantRow>();
+  const merchantByFactura = new Map<number, MerchantRow[]>();
   for (const m of merchant) {
-    merchantByFactura.set(m.numeroFactura, m);
+    const list = merchantByFactura.get(m.numeroFactura) ?? [];
+    list.push(m);
+    merchantByFactura.set(m.numeroFactura, list);
   }
 
   const bancoByMonto = new Map<string, BancoRow[]>();
@@ -27,38 +30,48 @@ export function reconcile(
     bancoByMonto.set(key, list);
   }
 
-  const usadosBanco = new Set<string>();
+  const bancosUsados = new Set<BancoRow>();
+  const merchantConciliados = new Set<MerchantRow>();
   const filas: ConciliacionRow[] = [];
 
   for (const venta of ventas) {
-    const m = merchantByFactura.get(venta.numeroFactura);
-    const casheaBs = m?.montoPagadoBs ?? null;
+    const pagos = [...(merchantByFactura.get(venta.numeroFactura) ?? [])].sort(
+      (a, b) =>
+        a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
+        a.referencia.localeCompare(b.referencia) ||
+        a.montoPagadoBs - b.montoPagadoBs
+    );
 
-    let bncBs: number | null = null;
+    for (const m of pagos) {
+      const casheaBs = m.montoPagadoBs > 0 ? m.montoPagadoBs : null;
+      let bncBs: number | null = null;
 
-    if (m && casheaBs !== null) {
-      const candidatos = findBancoCandidates(casheaBs, bancoByMonto);
-      const match = candidatos.find(
-        (b) => !usadosBanco.has(b.referencia) && amountsMatch(b.haber, casheaBs)
-      );
-      if (match) {
-        bncBs = match.haber;
-        usadosBanco.add(match.referencia);
+      if (casheaBs !== null) {
+        const candidatos = findBancoCandidates(casheaBs, bancoByMonto);
+        const match = candidatos.find(
+          (b) => !bancosUsados.has(b) && amountsMatch(b.haber, casheaBs)
+        );
+        if (match) {
+          bncBs = match.haber;
+          bancosUsados.add(match);
+          merchantConciliados.add(m);
+        }
       }
-    }
 
-    filas.push({
-      fechaEmitida: venta.fechaEmision,
-      numeroFactura: venta.numeroFactura,
-      empresa: venta.empresa,
-      cuotaInicialUsd: venta.cuotaInicialUsd,
-      cuotaPendienteUsd: venta.cuotaPendienteUsd,
-      totalUsd: venta.totalUsd,
-      casheaBs,
-      bncBs,
-      pagado: casheaBs !== null && bncBs !== null && amountsMatch(casheaBs, bncBs),
-      tipoPago: classifyTipoPago(m, casheaBs, venta),
-    });
+      filas.push({
+        fechaEmitida: venta.fechaEmision,
+        fechaPago: m.fechaTransaccion,
+        numeroFactura: venta.numeroFactura,
+        empresa: venta.empresa,
+        cuotaInicialUsd: venta.cuotaInicialUsd,
+        cuotaPendienteUsd: venta.cuotaPendienteUsd,
+        totalUsd: venta.totalUsd,
+        casheaBs,
+        bncBs,
+        pagado: casheaBs !== null && bncBs !== null && amountsMatch(casheaBs, bncBs),
+        tipoPago: classifyTipoPago(m, casheaBs, venta),
+      });
+    }
   }
 
   // Ingresos Cashea = solo ventas conciliadas (✓)
@@ -69,11 +82,67 @@ export function reconcile(
   // Total en cuenta = saldo final del extracto BNC
   const totalBnc = saldoFinal;
 
+  const facturasVenta = new Set(ventas.map((v) => v.numeroFactura));
+  const pendientesConfirmar: PendienteConfirmarRow[] = [];
+  const merchantSinFactura = merchant
+    .filter((m) => !facturasVenta.has(m.numeroFactura) && m.montoPagadoBs > 0)
+    .sort(
+      (a, b) =>
+        a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
+        a.numeroFactura - b.numeroFactura ||
+        a.referencia.localeCompare(b.referencia)
+    );
+
+  for (const m of merchantSinFactura) {
+    const match = findBancoCandidates(m.montoPagadoBs, bancoByMonto).find(
+      (b) => !bancosUsados.has(b) && amountsMatch(b.haber, m.montoPagadoBs)
+    );
+    if (!match) continue;
+
+    bancosUsados.add(match);
+    merchantConciliados.add(m);
+    pendientesConfirmar.push({
+      fechaMerchant: m.fechaTransaccion,
+      numeroFactura: m.numeroFactura,
+      referenciaMerchant: m.referencia,
+      montoMerchantBs: m.montoPagadoBs,
+      montoUsd: m.montoPagadoUsd,
+      tasaCambio: m.tasaCambio,
+      fechaBanco: match.fecha,
+      referenciaBanco: match.referencia,
+      descripcionBanco: match.descripcion,
+      montoBanco: match.haber,
+    });
+  }
+
+  const bancoSinConciliar = banco
+    .filter((b) => !bancosUsados.has(b))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.referencia.localeCompare(b.referencia));
+  const merchantSinVenta = merchant
+    .filter((m) => !facturasVenta.has(m.numeroFactura) && !merchantConciliados.has(m))
+    .sort(
+      (a, b) =>
+        a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
+        a.numeroFactura - b.numeroFactura
+    );
+  const merchantSinBanco = merchant
+    .filter((m) => facturasVenta.has(m.numeroFactura) && !merchantConciliados.has(m))
+    .sort(
+      (a, b) =>
+        a.numeroFactura - b.numeroFactura ||
+        a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
+        a.referencia.localeCompare(b.referencia)
+    );
+
   return {
     totalCashea,
     totalBnc,
     diferencia: totalBnc - totalCashea,
     filas,
+    bancoSinConciliar,
+    merchantSinVenta,
+    merchantSinBanco,
+    pendientesConfirmar,
   };
 }
 

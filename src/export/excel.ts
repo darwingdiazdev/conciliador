@@ -3,9 +3,9 @@ import path from "path";
 import ExcelJS from "exceljs";
 import { COMPANIES } from "../constants/companies";
 import { formatBs, formatUsd } from "../utils/amounts";
-import { ResumenConciliacion } from "../types";
+import { BancoRow, MerchantRow, PendienteConfirmarRow, ResumenConciliacion } from "../types";
 
-const COLS = 10;
+const COLS = 11;
 const YELLOW_BANNER = "FFFFFF00";
 const YELLOW_CASHEA = "FFFFF2CC"; // amarillo claro
 const GREY_HEADER = "FFE8E8E8";
@@ -28,12 +28,12 @@ export async function exportConciliacion(
     views: [{ state: "frozen", ySplit: headerRow }],
   });
 
+  const filas = resumen.filas.filter((f) => f.pagado);
   const empresa =
     options.empresa ||
-    resumen.filas.find((f) => f.empresa)?.empresa ||
+    filas.find((f) => f.empresa)?.empresa ||
     COMPANIES[COMPANIES.length - 1];
-
-  const fechas = resumen.filas.map((f) => f.fechaEmitida).filter(Boolean).sort();
+  const fechas = filas.map((f) => f.fechaEmitida).filter(Boolean).sort();
   const desde = options.fechaDesde || fechas[0] || "";
   const hasta = options.fechaHasta || fechas[fechas.length - 1] || "";
   const rangoTitulo = formatRangoFechas(desde, hasta);
@@ -69,6 +69,7 @@ export async function exportConciliacion(
 
   const headers = [
     "Fecha emitida",
+    "Fecha pago",
     "N° Factura",
     "Empresa",
     "C. inicial $",
@@ -88,16 +89,14 @@ export async function exportConciliacion(
     cell.font = { bold: true, size: 10, color: { argb: BLACK } };
     cell.fill = solidFill(GREY_HEADER);
     cell.alignment = {
-      horizontal: i >= 3 && i <= 7 ? "right" : i === 9 ? "center" : "left",
+      horizontal: i >= 4 && i <= 8 ? "right" : i === 9 || i === 10 ? "center" : "left",
       vertical: "middle",
     };
     cell.border = thinBorder();
   });
 
-  sheet.autoFilter = { from: `A${headerRow}`, to: `J${headerRow}` };
-
   // ── Datos ──
-  resumen.filas.forEach((fila, idx) => {
+  filas.forEach((fila, idx) => {
     const rowNum = headerRow + 1 + idx;
     const row = sheet.getRow(rowNum);
     row.height = 18;
@@ -106,6 +105,7 @@ export async function exportConciliacion(
 
     const values: (string | number)[] = [
       fila.fechaEmitida,
+      fila.fechaPago,
       fila.numeroFactura,
       fila.empresa,
       formatUsd(fila.cuotaInicialUsd),
@@ -123,16 +123,16 @@ export async function exportConciliacion(
       cell.border = thinBorder();
       cell.font = { size: 10, color: { argb: BLACK } };
 
-      if (i === 6) {
+      if (i === 7) {
         cell.fill = solidFill(YELLOW_CASHEA);
         cell.alignment = { horizontal: "right", vertical: "middle" };
-      } else if (i === 8) {
+      } else if (i === 9) {
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.fill = solidFill(rowFill);
         if (fila.pagado) {
           cell.font = { bold: true, size: 13, color: { argb: GREEN } };
         }
-      } else if (i === 9) {
+      } else if (i === 10) {
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.fill = solidFill(rowFill);
         if (fila.tipoPago === "Pago completo") {
@@ -143,31 +143,175 @@ export async function exportConciliacion(
       } else {
         cell.fill = solidFill(rowFill);
         cell.alignment = {
-          horizontal: i >= 3 && i <= 7 ? "right" : "left",
+          horizontal: i >= 4 && i <= 8 ? "right" : "left",
           vertical: "middle",
         };
       }
     });
   });
 
+  let nextRow = headerRow + filas.length + 2;
+  nextRow = writeExtraTable(sheet, nextRow, {
+    title: "Pendiente por confirmar en ventas Cashea",
+    headers: [
+      "Fecha merchant",
+      "N° Factura",
+      "Ref. merchant",
+      "Monto merchant",
+      "Monto USD",
+      "Tasa",
+      "Fecha banco",
+      "Ref. banco",
+      "Descripción banco",
+      "Monto banco",
+    ],
+    rows: resumen.pendientesConfirmar.map(pendienteValues),
+    moneyCols: [3, 4, 5, 9],
+    emptyText: "No hay movimientos pendientes por confirmar",
+  });
+  nextRow = writeExtraTable(sheet, nextRow + 1, {
+    title: "Movimientos del banco sin conciliar",
+    headers: ["Fecha", "Referencia", "Descripción", "Tipo de operación", "Monto"],
+    rows: resumen.bancoSinConciliar.map(bancoSinConciliarValues),
+    moneyCols: [4],
+    emptyText: "No hay movimientos del banco sin conciliar",
+  });
+  nextRow = writeExtraTable(sheet, nextRow + 1, {
+    title: "Merchant sin coincidencia en ventas",
+    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa"],
+    rows: resumen.merchantSinVenta.map(merchantSinVentaValues),
+    moneyCols: [3, 4, 5],
+    emptyText: "No hay movimientos del merchant sin coincidencia",
+  });
+  writeExtraTable(sheet, nextRow + 1, {
+    title: "Abonos sin coincidencia en el banco",
+    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa"],
+    rows: resumen.merchantSinBanco.map(merchantSinVentaValues),
+    moneyCols: [3, 4, 5],
+    emptyText: "No hay abonos sin coincidencia en el banco",
+  });
+
   sheet.columns = [
     { width: 14 },
-    { width: 11 },
+    { width: 18 },
     { width: 32 },
-    { width: 13 },
-    { width: 13 },
-    { width: 11 },
-    { width: 17 },
-    { width: 17 },
-    { width: 9 },
+    { width: 28 },
+    { width: 16 },
+    { width: 16 },
     { width: 14 },
-    { width: 2 },
-    { width: 22 },
+    { width: 17 },
+    { width: 17 },
+    { width: 10 },
+    { width: 14 },
+    { width: 24 },
     { width: 18 },
   ];
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
+}
+
+function pendienteValues(row: PendienteConfirmarRow): (string | number)[] {
+  return [
+    row.fechaMerchant,
+    row.numeroFactura,
+    row.referenciaMerchant,
+    formatBs(row.montoMerchantBs),
+    formatUsd(row.montoUsd),
+    row.tasaCambio ? formatMontoPlain(row.tasaCambio) : "",
+    row.fechaBanco,
+    row.referenciaBanco,
+    row.descripcionBanco,
+    formatBs(row.montoBanco),
+  ];
+}
+
+function bancoSinConciliarValues(row: BancoRow): (string | number)[] {
+  return [row.fecha, row.referencia, row.descripcion, row.tipoOperacion, formatBs(row.haber)];
+}
+
+function merchantSinVentaValues(row: MerchantRow): (string | number)[] {
+  return [
+    row.fechaTransaccion,
+    row.numeroFactura,
+    row.referencia,
+    formatBs(row.montoPagadoBs),
+    formatUsd(row.montoPagadoUsd),
+    row.tasaCambio ? formatMontoPlain(row.tasaCambio) : "",
+  ];
+}
+
+function formatMontoPlain(amount: number): string {
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function writeExtraTable(
+  sheet: ExcelJS.Worksheet,
+  startRow: number,
+  spec: {
+    title: string;
+    headers: string[];
+    rows: (string | number)[][];
+    moneyCols: number[];
+    emptyText: string;
+  }
+): number {
+  const lastCol = colLetter(spec.headers.length);
+  const titleRow = sheet.getRow(startRow);
+  titleRow.height = 22;
+  mergeAndStyle(sheet, `A${startRow}:${lastCol}${startRow}`, {
+    value: spec.title,
+    font: { bold: true, size: 11, color: { argb: WHITE } },
+    fill: "FFE8590C",
+    alignment: { horizontal: "left", vertical: "middle" },
+  });
+
+  const header = sheet.getRow(startRow + 1);
+  header.height = 20;
+  spec.headers.forEach((h, i) => {
+    const cell = header.getCell(i + 1);
+    cell.value = h;
+    cell.font = { bold: true, size: 10, color: { argb: BLACK } };
+    cell.fill = solidFill(GREY_HEADER);
+    cell.alignment = {
+      horizontal: spec.moneyCols.includes(i) ? "right" : "left",
+      vertical: "middle",
+    };
+    cell.border = thinBorder();
+  });
+
+  const body = spec.rows.length > 0 ? spec.rows : [[spec.emptyText]];
+  body.forEach((values, idx) => {
+    const row = sheet.getRow(startRow + 2 + idx);
+    row.height = 18;
+    const rowFill = idx % 2 === 1 ? GREY_ROW : WHITE;
+    const isEmpty = spec.rows.length === 0;
+
+    values.forEach((v, i) => {
+      const cell = row.getCell(i + 1);
+      cell.value = v;
+      cell.border = thinBorder();
+      cell.font = {
+        size: 10,
+        italic: isEmpty,
+        color: { argb: isEmpty ? "FF718096" : BLACK },
+      };
+      cell.fill = solidFill(rowFill);
+      cell.alignment = {
+        horizontal: spec.moneyCols.includes(i) ? "right" : "left",
+        vertical: "middle",
+      };
+    });
+
+    if (isEmpty && spec.headers.length > 1) {
+      sheet.mergeCells(`A${row.number}:${lastCol}${row.number}`);
+    }
+  });
+
+  return startRow + 2 + body.length;
 }
 
 function addHeaderImages(workbook: ExcelJS.Workbook, sheet: ExcelJS.Worksheet) {
@@ -219,8 +363,8 @@ function buildSummaryBox(
 
   rows.forEach((item, i) => {
     const r = startRow + i;
-    const labelCell = sheet.getCell(`K${r}`);
-    const valueCell = sheet.getCell(`L${r}`);
+    const labelCell = sheet.getCell(`L${r}`);
+    const valueCell = sheet.getCell(`M${r}`);
 
     labelCell.value = item.label;
     labelCell.font = { bold: true, size: 10 };

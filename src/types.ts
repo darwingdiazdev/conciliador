@@ -34,6 +34,7 @@ export type TipoPagoCuota = "Pago completo" | "Abono";
 
 export interface ConciliacionRow {
   fechaEmitida: string;
+  fechaPago: string;
   numeroFactura: number;
   empresa: string;
   cuotaInicialUsd: number;
@@ -45,11 +46,30 @@ export interface ConciliacionRow {
   tipoPago: TipoPagoCuota | null;
 }
 
+export interface PendienteConfirmarRow {
+  fechaMerchant: string;
+  numeroFactura: number;
+  referenciaMerchant: string;
+  montoMerchantBs: number;
+  montoUsd: number;
+  tasaCambio: number;
+  fechaBanco: string;
+  referenciaBanco: string;
+  descripcionBanco: string;
+  montoBanco: number;
+}
+
 export interface ResumenConciliacion {
   totalCashea: number;
   totalBnc: number;
   diferencia: number;
   filas: ConciliacionRow[];
+  bancoSinConciliar: BancoRow[];
+  merchantSinVenta: MerchantRow[];
+  /** Abonos de una factura de ventas que no encontraron movimiento en el banco. */
+  merchantSinBanco: MerchantRow[];
+  /** Merchant y banco coinciden, pero la factura no está en ventas Cashea. */
+  pendientesConfirmar: PendienteConfirmarRow[];
 }
 
 export interface EstadoCuentaRow {

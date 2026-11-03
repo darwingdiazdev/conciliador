@@ -4,6 +4,7 @@ import {
   cellToString,
   detectHeaderRow,
   findColumnIndex,
+  findTasaColumn,
   bufferToRows,
 } from "../utils/excel-helpers";
 import { parseMonto } from "../utils/amounts";
@@ -28,12 +29,7 @@ export async function parseMerchant(buffer: Buffer): Promise<MerchantRow[]> {
     "montoasignado",
     "montousd",
   ]);
-  const colTasa = findColumnIndex(headers, [
-    "tasadecambio",
-    "tasadecamb",
-    "tasadecam",
-    "tasacamb",
-  ]);
+  const colTasa = findTasaColumn(headers);
   const colRef = findColumnIndex(headers, ["referencia", "nreferencia"]);
 
   if (colFactura < 0) {
@@ -43,7 +39,6 @@ export async function parseMerchant(buffer: Buffer): Promise<MerchantRow[]> {
   }
 
   const merchants: MerchantRow[] = [];
-  const byFactura = new Map<number, MerchantRow>();
 
   for (let i = headerIdx + 1; i < allRows.length; i++) {
     const row = allRows[i];
@@ -82,14 +77,15 @@ export async function parseMerchant(buffer: Buffer): Promise<MerchantRow[]> {
       referencia: colRef >= 0 ? cellToString(row[colRef]) : "",
     };
 
-    // Una fila por factura: conservar el registro más reciente o con mayor monto
-    const existing = byFactura.get(numeroFactura);
-    if (!existing || entry.montoPagadoBs >= existing.montoPagadoBs) {
-      byFactura.set(numeroFactura, entry);
-    }
+    merchants.push(entry);
   }
 
-  byFactura.forEach((m) => merchants.push(m));
+  merchants.sort(
+    (a, b) =>
+      a.numeroFactura - b.numeroFactura ||
+      a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
+      a.referencia.localeCompare(b.referencia)
+  );
 
   if (merchants.length === 0) {
     throw new Error("No se encontraron registros válidos en el archivo de Cashea.");
