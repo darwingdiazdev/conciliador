@@ -25,6 +25,14 @@ export interface BancoRow {
   tipoOperacion: string;
 }
 
+export interface BancoSinConciliarRow extends BancoRow {
+  motivo: string;
+}
+
+export interface MerchantSinConciliarRow extends MerchantRow {
+  motivo: string;
+}
+
 export interface BancoParseResult {
   movimientos: BancoRow[];
   saldoFinal: number;
@@ -57,6 +65,7 @@ export interface PendienteConfirmarRow {
   referenciaBanco: string;
   descripcionBanco: string;
   montoBanco: number;
+  motivo: string;
 }
 
 export interface ResumenConciliacion {
@@ -64,10 +73,10 @@ export interface ResumenConciliacion {
   totalBnc: number;
   diferencia: number;
   filas: ConciliacionRow[];
-  bancoSinConciliar: BancoRow[];
-  merchantSinVenta: MerchantRow[];
+  bancoSinConciliar: BancoSinConciliarRow[];
+  merchantSinVenta: MerchantSinConciliarRow[];
   /** Abonos de una factura de ventas que no encontraron movimiento en el banco. */
-  merchantSinBanco: MerchantRow[];
+  merchantSinBanco: MerchantSinConciliarRow[];
   /** Merchant y banco coinciden, pero la factura no está en ventas Cashea. */
   pendientesConfirmar: PendienteConfirmarRow[];
 }

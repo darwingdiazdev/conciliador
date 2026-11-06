@@ -3,7 +3,12 @@ import path from "path";
 import ExcelJS from "exceljs";
 import { COMPANIES } from "../constants/companies";
 import { formatBs, formatUsd } from "../utils/amounts";
-import { BancoRow, MerchantRow, PendienteConfirmarRow, ResumenConciliacion } from "../types";
+import {
+  BancoSinConciliarRow,
+  MerchantSinConciliarRow,
+  PendienteConfirmarRow,
+  ResumenConciliacion,
+} from "../types";
 
 const COLS = 11;
 const YELLOW_BANNER = "FFFFFF00";
@@ -64,8 +69,8 @@ export async function exportConciliacion(
     alignment: { horizontal: "center", vertical: "middle" },
   });
 
-  // ── Resumen + encabezados (fila 4) ──
-  buildSummaryBox(sheet, headerRow, resumen);
+  // El resumen queda en las filas que el filtro no esconde.
+  buildSummaryBox(sheet, 2, resumen);
 
   const headers = [
     "Fecha emitida",
@@ -150,8 +155,7 @@ export async function exportConciliacion(
     });
   });
 
-  let nextRow = headerRow + filas.length + 2;
-  nextRow = writeExtraTable(sheet, nextRow, {
+  addFilteredSheet(workbook, "Pendiente por confirmar", {
     title: "Pendiente por confirmar en ventas Cashea",
     headers: [
       "Fecha merchant",
@@ -164,31 +168,36 @@ export async function exportConciliacion(
       "Ref. banco",
       "Descripción banco",
       "Monto banco",
+      "Por qué",
     ],
     rows: resumen.pendientesConfirmar.map(pendienteValues),
     moneyCols: [3, 4, 5, 9],
     emptyText: "No hay movimientos pendientes por confirmar",
+    widths: [16, 14, 20, 18, 14, 12, 16, 20, 32, 18, 52],
   });
-  nextRow = writeExtraTable(sheet, nextRow + 1, {
+  addFilteredSheet(workbook, "Banco sin conciliar", {
     title: "Movimientos del banco sin conciliar",
-    headers: ["Fecha", "Referencia", "Descripción", "Tipo de operación", "Monto"],
+    headers: ["Fecha", "Referencia", "Descripción", "Tipo de operación", "Monto", "Por qué"],
     rows: resumen.bancoSinConciliar.map(bancoSinConciliarValues),
     moneyCols: [4],
     emptyText: "No hay movimientos del banco sin conciliar",
+    widths: [14, 22, 36, 24, 18, 62],
   });
-  nextRow = writeExtraTable(sheet, nextRow + 1, {
+  addFilteredSheet(workbook, "Merchant sin venta", {
     title: "Merchant sin coincidencia en ventas",
-    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa"],
+    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa", "Por qué"],
     rows: resumen.merchantSinVenta.map(merchantSinVentaValues),
     moneyCols: [3, 4, 5],
     emptyText: "No hay movimientos del merchant sin coincidencia",
+    widths: [14, 14, 22, 18, 14, 12, 72],
   });
-  writeExtraTable(sheet, nextRow + 1, {
+  addFilteredSheet(workbook, "Abonos sin banco", {
     title: "Abonos sin coincidencia en el banco",
-    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa"],
+    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa", "Por qué"],
     rows: resumen.merchantSinBanco.map(merchantSinVentaValues),
     moneyCols: [3, 4, 5],
     emptyText: "No hay abonos sin coincidencia en el banco",
+    widths: [14, 14, 22, 18, 14, 12, 62],
   });
 
   sheet.columns = [
@@ -207,6 +216,12 @@ export async function exportConciliacion(
     { width: 18 },
   ];
 
+  const lastDataRow = Math.max(headerRow, headerRow + filas.length);
+  sheet.autoFilter = {
+    from: { row: headerRow, column: 1 },
+    to: { row: lastDataRow, column: COLS },
+  };
+
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }
@@ -223,14 +238,15 @@ function pendienteValues(row: PendienteConfirmarRow): (string | number)[] {
     row.referenciaBanco,
     row.descripcionBanco,
     formatBs(row.montoBanco),
+    row.motivo,
   ];
 }
 
-function bancoSinConciliarValues(row: BancoRow): (string | number)[] {
-  return [row.fecha, row.referencia, row.descripcion, row.tipoOperacion, formatBs(row.haber)];
+function bancoSinConciliarValues(row: BancoSinConciliarRow): (string | number)[] {
+  return [row.fecha, row.referencia, row.descripcion, row.tipoOperacion, formatBs(row.haber), row.motivo];
 }
 
-function merchantSinVentaValues(row: MerchantRow): (string | number)[] {
+function merchantSinVentaValues(row: MerchantSinConciliarRow): (string | number)[] {
   return [
     row.fechaTransaccion,
     row.numeroFactura,
@@ -238,6 +254,7 @@ function merchantSinVentaValues(row: MerchantRow): (string | number)[] {
     formatBs(row.montoPagadoBs),
     formatUsd(row.montoPagadoUsd),
     row.tasaCambio ? formatMontoPlain(row.tasaCambio) : "",
+    row.motivo,
   ];
 }
 
@@ -246,6 +263,31 @@ function formatMontoPlain(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function addFilteredSheet(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  spec: {
+    title: string;
+    headers: string[];
+    rows: (string | number)[][];
+    moneyCols: number[];
+    emptyText: string;
+    widths: number[];
+  }
+) {
+  const sheet = workbook.addWorksheet(name, {
+    views: [{ state: "frozen", ySplit: 2 }],
+  });
+  writeExtraTable(sheet, 1, spec);
+  if (spec.rows.length > 0) {
+    sheet.autoFilter = {
+      from: { row: 2, column: 1 },
+      to: { row: 2 + spec.rows.length, column: spec.headers.length },
+    };
+  }
+  sheet.columns = spec.widths.map((width) => ({ width }));
 }
 
 function writeExtraTable(

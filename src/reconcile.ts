@@ -1,8 +1,10 @@
 import { amountsMatch, amountsMatchUsd, roundMontoKey } from "./utils/amounts";
 import {
   BancoRow,
+  BancoSinConciliarRow,
   ConciliacionRow,
   MerchantRow,
+  MerchantSinConciliarRow,
   PendienteConfirmarRow,
   ResumenConciliacion,
   TipoPagoCuota,
@@ -112,18 +114,26 @@ export function reconcile(
       referenciaBanco: match.referencia,
       descripcionBanco: match.descripcion,
       montoBanco: match.haber,
+      motivo: "La factura no está en la lista de ventas Cashea",
     });
   }
 
   const bancoSinConciliar = banco
     .filter((b) => !bancosUsados.has(b))
-    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.referencia.localeCompare(b.referencia));
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.referencia.localeCompare(b.referencia))
+    .map((b): BancoSinConciliarRow => ({ ...b, motivo: motivoBanco(b, merchant, merchantConciliados) }));
   const merchantSinVenta = merchant
     .filter((m) => !facturasVenta.has(m.numeroFactura) && !merchantConciliados.has(m))
     .sort(
       (a, b) =>
         a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
         a.numeroFactura - b.numeroFactura
+    )
+    .map(
+      (m): MerchantSinConciliarRow => ({
+        ...m,
+        motivo: motivoMerchant(m, banco, bancosUsados, false),
+      })
     );
   const merchantSinBanco = merchant
     .filter((m) => facturasVenta.has(m.numeroFactura) && !merchantConciliados.has(m))
@@ -132,6 +142,12 @@ export function reconcile(
         a.numeroFactura - b.numeroFactura ||
         a.fechaTransaccion.localeCompare(b.fechaTransaccion) ||
         a.referencia.localeCompare(b.referencia)
+    )
+    .map(
+      (m): MerchantSinConciliarRow => ({
+        ...m,
+        motivo: motivoMerchant(m, banco, bancosUsados, true),
+      })
     );
 
   return {
@@ -174,6 +190,48 @@ function resolvePagadoUsd(
     return casheaBs / merchant.tasaCambio;
   }
   return null;
+}
+
+function motivoBanco(
+  banco: BancoRow,
+  merchant: MerchantRow[],
+  merchantConciliados: Set<MerchantRow>
+): string {
+  const pagos = merchant.filter(
+    (m) => m.montoPagadoBs > 0 && amountsMatch(m.montoPagadoBs, banco.haber)
+  );
+  if (pagos.length === 0) return "No hay un pago de Cashea con este monto";
+  if (pagos.every((m) => merchantConciliados.has(m))) {
+    return "El pago de Cashea con este monto ya se concilió con otro movimiento";
+  }
+  return "No quedó un pago de Cashea libre con este monto";
+}
+
+function motivoMerchant(
+  merchant: MerchantRow,
+  banco: BancoRow[],
+  bancosUsados: Set<BancoRow>,
+  estaEnVentas: boolean
+): string {
+  if (merchant.montoPagadoBs <= 0) {
+    return estaEnVentas
+      ? "El pago de Cashea no tiene monto"
+      : "La factura no está en ventas Cashea y el pago no tiene monto";
+  }
+
+  const movimientos = banco.filter((b) => amountsMatch(b.haber, merchant.montoPagadoBs));
+  if (!estaEnVentas) {
+    if (movimientos.length === 0) {
+      return "La factura no está en ventas Cashea y no hay un movimiento del banco con este monto";
+    }
+    return "La factura no está en ventas Cashea. El movimiento del banco con este monto ya se concilió con otro pago";
+  }
+
+  if (movimientos.length === 0) return "No hay un movimiento del banco con este monto";
+  if (movimientos.every((b) => bancosUsados.has(b))) {
+    return "El movimiento del banco con este monto ya se concilió con otro pago";
+  }
+  return "No quedó un movimiento del banco libre con este monto";
 }
 
 function findBancoCandidates(
