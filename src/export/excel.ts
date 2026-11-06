@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import ExcelJS from "exceljs";
 import { COMPANIES } from "../constants/companies";
-import { formatBs, formatUsd } from "../utils/amounts";
 import {
   BancoSinConciliarRow,
   MerchantSinConciliarRow,
@@ -19,6 +18,11 @@ const GREEN = "FF008000";
 const RED = "FFFF0000";
 const BLACK = "FF000000";
 const WHITE = "FFFFFFFF";
+
+const FMT_USD = '_("$"* #,##0.00_);_("$"* (#,##0.00);_("$"* "-"??_);_(@_)';
+const FMT_BS = '_("Bs"* #,##0.00_);_("Bs"* (#,##0.00);_("Bs"* "-"??_);_(@_)';
+const FMT_TASA = "#,##0.00";
+const FMT_FACTURA = "0";
 
 const CASHEA_BANNER = "Gemini_Generated_Image_6aycd26aycd26ayc (1).png";
 const BNC_LOGO = "BNC.png";
@@ -108,18 +112,29 @@ export async function exportConciliacion(
     const isAlt = idx % 2 === 1;
     const rowFill = isAlt ? GREY_ROW : WHITE;
 
-    const values: (string | number)[] = [
+    const values: (string | number | null)[] = [
       fila.fechaEmitida,
       fila.fechaPago,
       fila.numeroFactura,
       fila.empresa,
-      formatUsd(fila.cuotaInicialUsd),
-      formatUsd(fila.cuotaPendienteUsd),
-      formatUsd(fila.totalUsd),
-      formatBs(fila.casheaBs),
-      formatBs(fila.bncBs),
+      num(fila.cuotaInicialUsd),
+      num(fila.cuotaPendienteUsd),
+      num(fila.totalUsd),
+      num(fila.casheaBs),
+      num(fila.bncBs),
       fila.pagado ? "✓" : "",
       fila.tipoPago ?? "",
+    ];
+    const formats = [
+      undefined,
+      undefined,
+      FMT_FACTURA,
+      undefined,
+      FMT_USD,
+      FMT_USD,
+      FMT_USD,
+      FMT_BS,
+      FMT_BS,
     ];
 
     values.forEach((v, i) => {
@@ -127,6 +142,7 @@ export async function exportConciliacion(
       cell.value = v;
       cell.border = thinBorder();
       cell.font = { size: 10, color: { argb: BLACK } };
+      if (formats[i] && typeof v === "number") cell.numFmt = formats[i];
 
       if (i === 7) {
         cell.fill = solidFill(YELLOW_CASHEA);
@@ -171,7 +187,7 @@ export async function exportConciliacion(
       "Por qué",
     ],
     rows: resumen.pendientesConfirmar.map(pendienteValues),
-    moneyCols: [3, 4, 5, 9],
+    formats: [undefined, FMT_FACTURA, undefined, FMT_BS, FMT_USD, FMT_TASA, undefined, undefined, undefined, FMT_BS],
     emptyText: "No hay movimientos pendientes por confirmar",
     widths: [16, 14, 20, 18, 14, 12, 16, 20, 32, 18, 52],
   });
@@ -179,7 +195,7 @@ export async function exportConciliacion(
     title: "Movimientos del banco sin conciliar",
     headers: ["Fecha", "Referencia", "Descripción", "Tipo de operación", "Monto", "Por qué"],
     rows: resumen.bancoSinConciliar.map(bancoSinConciliarValues),
-    moneyCols: [4],
+    formats: [undefined, undefined, undefined, undefined, FMT_BS],
     emptyText: "No hay movimientos del banco sin conciliar",
     widths: [14, 22, 36, 24, 18, 62],
   });
@@ -187,7 +203,7 @@ export async function exportConciliacion(
     title: "Merchant sin coincidencia en ventas",
     headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa", "Por qué"],
     rows: resumen.merchantSinVenta.map(merchantSinVentaValues),
-    moneyCols: [3, 4, 5],
+    formats: [undefined, FMT_FACTURA, undefined, FMT_BS, FMT_USD, FMT_TASA],
     emptyText: "No hay movimientos del merchant sin coincidencia",
     widths: [14, 14, 22, 18, 14, 12, 72],
   });
@@ -195,7 +211,7 @@ export async function exportConciliacion(
     title: "Abonos sin coincidencia en el banco",
     headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa", "Por qué"],
     rows: resumen.merchantSinBanco.map(merchantSinVentaValues),
-    moneyCols: [3, 4, 5],
+    formats: [undefined, FMT_FACTURA, undefined, FMT_BS, FMT_USD, FMT_TASA],
     emptyText: "No hay abonos sin coincidencia en el banco",
     widths: [14, 14, 22, 18, 14, 12, 62],
   });
@@ -226,43 +242,41 @@ export async function exportConciliacion(
   return Buffer.from(buffer);
 }
 
-function pendienteValues(row: PendienteConfirmarRow): (string | number)[] {
+function num(value: number | null | undefined): number | null {
+  if (value === null || value === undefined || Number.isNaN(value)) return null;
+  return value;
+}
+
+function pendienteValues(row: PendienteConfirmarRow): (string | number | null)[] {
   return [
     row.fechaMerchant,
     row.numeroFactura,
     row.referenciaMerchant,
-    formatBs(row.montoMerchantBs),
-    formatUsd(row.montoUsd),
-    row.tasaCambio ? formatMontoPlain(row.tasaCambio) : "",
+    num(row.montoMerchantBs),
+    num(row.montoUsd),
+    num(row.tasaCambio),
     row.fechaBanco,
     row.referenciaBanco,
     row.descripcionBanco,
-    formatBs(row.montoBanco),
+    num(row.montoBanco),
     row.motivo,
   ];
 }
 
-function bancoSinConciliarValues(row: BancoSinConciliarRow): (string | number)[] {
-  return [row.fecha, row.referencia, row.descripcion, row.tipoOperacion, formatBs(row.haber), row.motivo];
+function bancoSinConciliarValues(row: BancoSinConciliarRow): (string | number | null)[] {
+  return [row.fecha, row.referencia, row.descripcion, row.tipoOperacion, num(row.haber), row.motivo];
 }
 
-function merchantSinVentaValues(row: MerchantSinConciliarRow): (string | number)[] {
+function merchantSinVentaValues(row: MerchantSinConciliarRow): (string | number | null)[] {
   return [
     row.fechaTransaccion,
     row.numeroFactura,
     row.referencia,
-    formatBs(row.montoPagadoBs),
-    formatUsd(row.montoPagadoUsd),
-    row.tasaCambio ? formatMontoPlain(row.tasaCambio) : "",
+    num(row.montoPagadoBs),
+    num(row.montoPagadoUsd),
+    num(row.tasaCambio),
     row.motivo,
   ];
-}
-
-function formatMontoPlain(amount: number): string {
-  return amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 function addFilteredSheet(
@@ -271,8 +285,8 @@ function addFilteredSheet(
   spec: {
     title: string;
     headers: string[];
-    rows: (string | number)[][];
-    moneyCols: number[];
+    rows: (string | number | null)[][];
+    formats: (string | undefined)[];
     emptyText: string;
     widths: number[];
   }
@@ -296,8 +310,8 @@ function writeExtraTable(
   spec: {
     title: string;
     headers: string[];
-    rows: (string | number)[][];
-    moneyCols: number[];
+    rows: (string | number | null)[][];
+    formats: (string | undefined)[];
     emptyText: string;
   }
 ): number {
@@ -319,7 +333,7 @@ function writeExtraTable(
     cell.font = { bold: true, size: 10, color: { argb: BLACK } };
     cell.fill = solidFill(GREY_HEADER);
     cell.alignment = {
-      horizontal: spec.moneyCols.includes(i) ? "right" : "left",
+      horizontal: spec.formats[i] ? "right" : "left",
       vertical: "middle",
     };
     cell.border = thinBorder();
@@ -342,8 +356,9 @@ function writeExtraTable(
         color: { argb: isEmpty ? "FF718096" : BLACK },
       };
       cell.fill = solidFill(rowFill);
+      if (!isEmpty && spec.formats[i] && typeof v === "number") cell.numFmt = spec.formats[i];
       cell.alignment = {
-        horizontal: spec.moneyCols.includes(i) ? "right" : "left",
+        horizontal: !isEmpty && spec.formats[i] ? "right" : "left",
         vertical: "middle",
       };
     });
@@ -393,11 +408,11 @@ function buildSummaryBox(
   resumen: ResumenConciliacion
 ) {
   const rows = [
-    { label: "INGRESOS POR CASHEA", value: formatBs(resumen.totalCashea), highlight: true },
-    { label: "TOTAL EN CUENTA", value: formatBs(resumen.totalBnc), highlight: false },
+    { label: "INGRESOS POR CASHEA", value: resumen.totalCashea, highlight: true },
+    { label: "TOTAL EN CUENTA", value: resumen.totalBnc, highlight: false },
     {
       label: "DIF.",
-      value: formatBs(resumen.diferencia),
+      value: resumen.diferencia,
       highlight: false,
       valueColor: resumen.diferencia < 0 ? RED : GREEN,
     },
@@ -415,6 +430,7 @@ function buildSummaryBox(
     labelCell.fill = solidFill(item.highlight ? YELLOW_CASHEA : WHITE);
 
     valueCell.value = item.value;
+    valueCell.numFmt = FMT_BS;
     valueCell.font = {
       bold: true,
       size: 10,
