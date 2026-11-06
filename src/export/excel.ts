@@ -21,6 +21,7 @@ const WHITE = "FFFFFFFF";
 
 const FMT_USD = '_("$"* #,##0.00_);_("$"* (#,##0.00);_("$"* "-"??_);_(@_)';
 const FMT_BS = '_("Bs"* #,##0.00_);_("Bs"* (#,##0.00);_("Bs"* "-"??_);_(@_)';
+const FMT_BSS = '_("Bs.S"* #,##0.00_);_("Bs.S"* (#,##0.00);_("Bs.S"* "-"??_);_(@_)';
 const FMT_TASA = "#,##0.00";
 const FMT_FACTURA = "0";
 
@@ -83,7 +84,7 @@ export async function exportConciliacion(
     "Empresa",
     "C. inicial $",
     "C. pendiente $",
-    "Total $",
+    "Total Bs.S",
     "Cashea",
     "BNC",
     "Pagado",
@@ -132,7 +133,7 @@ export async function exportConciliacion(
       undefined,
       FMT_USD,
       FMT_USD,
-      FMT_USD,
+      FMT_BSS,
       FMT_BS,
       FMT_BS,
     ];
