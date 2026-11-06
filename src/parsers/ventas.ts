@@ -19,6 +19,7 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
 
   const colFecha = findColumnIndex(headers, ["fechaemision", "fechaemitida"]);
   const colFactura = findColumnIndex(headers, ["nfactura", "factura", "numerofactura"]);
+  const colSucursal = findColumnIndex(headers, ["sucursal", "tienda"]);
   const colEmpresa = findColumnIndex(headers, ["empresa"]);
   let colCuotaIniUsd = findColumnDollarSign(headers, [["cuota", "inicial"]]);
   if (colCuotaIniUsd < 0) {
@@ -88,7 +89,8 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
     ventas.push({
       fechaEmision: colFecha >= 0 ? cellToDateString(row[colFecha]) : "",
       numeroFactura,
-      empresa: colEmpresa >= 0 ? String(row[colEmpresa] ?? "") : "",
+      sucursal: colSucursal >= 0 ? String(row[colSucursal] ?? "").trim() : "",
+      empresa: colEmpresa >= 0 ? String(row[colEmpresa] ?? "").trim() : "",
       cuotaInicialUsd: Number.isNaN(cuotaInicialUsd) ? 0 : cuotaInicialUsd,
       cuotaPendienteUsd: Number.isNaN(cuotaPendienteUsd) ? 0 : cuotaPendienteUsd,
       totalUsd,
@@ -101,4 +103,57 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
   }
 
   return ventas;
+}
+
+/** Título "tienda - empresa" y rango de fechas del archivo de ventas. */
+export function encabezadoVentas(
+  ventas: VentaRow[],
+  hoy = new Date()
+): { titulo: string; fechaDesde: string; fechaHasta: string } {
+  const conteo = new Map<string, number>();
+  for (const venta of ventas) {
+    const tituloFila = [nombreTienda(venta.sucursal), venta.empresa.trim()]
+      .filter(Boolean)
+      .join(" - ");
+    if (!tituloFila) continue;
+    conteo.set(tituloFila, (conteo.get(tituloFila) ?? 0) + 1);
+  }
+  const titulo = [...conteo.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([nombre]) => nombre)
+    .join(" · ");
+  const { fechaDesde, fechaHasta } = rangoPorDistancia(ventas, hoy);
+  return { titulo: titulo || "Conciliación de pagos", fechaDesde, fechaHasta };
+}
+
+function nombreTienda(sucursal: string): string {
+  return sucursal.split("-")[0]?.trim() ?? "";
+}
+
+function rangoPorDistancia(
+  ventas: VentaRow[],
+  hoy: Date
+): { fechaDesde: string; fechaHasta: string } {
+  const hoyMs = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  let fechaDesde = "";
+  let fechaHasta = "";
+  let mayorDistancia = -1;
+  let menorDistancia = Infinity;
+
+  for (const venta of ventas) {
+    const fecha = venta.fechaEmision;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue;
+    const [anio, mes, dia] = fecha.split("-").map(Number);
+    const distancia = Math.abs(Date.UTC(anio, mes - 1, dia) - hoyMs);
+    if (distancia > mayorDistancia) {
+      mayorDistancia = distancia;
+      fechaDesde = fecha;
+    }
+    if (distancia < menorDistancia) {
+      menorDistancia = distancia;
+      fechaHasta = fecha;
+    }
+  }
+
+  return { fechaDesde, fechaHasta };
 }

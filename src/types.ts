@@ -1,6 +1,7 @@
 export interface VentaRow {
   fechaEmision: string;
   numeroFactura: number;
+  sucursal: string;
   empresa: string;
   cuotaInicialUsd: number;
   cuotaPendienteUsd: number;

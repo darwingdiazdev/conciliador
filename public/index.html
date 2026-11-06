@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conciliador de Pagos</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -368,29 +367,6 @@
           </label>
         </div>
 
-        <div class="optional">
-          <div style="grid-column: 1 / -1">
-            <label>Empresa</label>
-            <select name="empresa" required>
-              <option value="" disabled selected>Selecciona una empresa</option>
-              <option value="EMBUTIDOS FATTORIA">EMBUTIDOS FATTORIA</option>
-              <option value="MOHAN 2025">MOHAN 2025</option>
-              <option value="EMBUTIDOS MOHAN">EMBUTIDOS MOHAN</option>
-              <option value="DELICATESES EMMANUEL">DELICATESES EMMANUEL</option>
-              <option value="DELICATESES MOMOY">DELICATESES MOMOY</option>
-              <option value="DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA">DISTRIBUIDORA Y COMERCIALIZADORA MOREFINA</option>
-            </select>
-          </div>
-          <div class="date-field">
-            <label>Rango desde (opcional)</label>
-            <input type="text" id="fechaDesde" name="fechaDesde" placeholder="Selecciona fecha" autocomplete="off" />
-          </div>
-          <div class="date-field">
-            <label>Rango hasta (opcional)</label>
-            <input type="text" id="fechaHasta" name="fechaHasta" placeholder="Selecciona fecha" autocomplete="off" />
-          </div>
-        </div>
-
         <button type="submit" id="btn-cashea-submit">Generar conciliación</button>
       </form>
 
@@ -468,8 +444,6 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
   <script>
     function showView(id) {
       document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
@@ -481,30 +455,6 @@
     document.getElementById('btn-ordenes').addEventListener('click', () => showView('view-ordenes'));
     document.querySelectorAll('[data-back]').forEach((btn) => {
       btn.addEventListener('click', () => showView('view-home'));
-    });
-
-    const fpDesde = flatpickr("#fechaDesde", {
-      locale: "es",
-      dateFormat: "Y-m-d",
-      altInput: true,
-      altFormat: "d/m/Y",
-      disableMobile: true,
-      allowInput: false,
-      onChange(_dates, dateStr) {
-        fpHasta.set("minDate", dateStr || null);
-      },
-    });
-
-    const fpHasta = flatpickr("#fechaHasta", {
-      locale: "es",
-      dateFormat: "Y-m-d",
-      altInput: true,
-      altFormat: "d/m/Y",
-      disableMobile: true,
-      allowInput: false,
-      onChange(_dates, dateStr) {
-        fpDesde.set("maxDate", dateStr || null);
-      },
     });
 
     function setupDropzone(dropId, nameId) {

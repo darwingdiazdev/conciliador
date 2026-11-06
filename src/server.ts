@@ -1,14 +1,13 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { parseVentas } from "./parsers/ventas";
+import { encabezadoVentas, parseVentas } from "./parsers/ventas";
 import { parseMerchant } from "./parsers/merchant";
 import { parseBanco } from "./parsers/banco";
 import { parseEstadoCuenta } from "./parsers/estado-cuenta";
 import { parseTransferencias } from "./parsers/transferencias";
 import { reconcile } from "./reconcile";
 import { reconcileTransferencias } from "./reconcile-transferencias";
-import { COMPANIES } from "./constants/companies";
 import { exportConciliacion } from "./export/excel";
 import { exportTransferencias } from "./export/excel-transferencias";
 import { detectArchivoKind } from "./utils/detect-file-kind";
@@ -58,20 +57,7 @@ app.post(
         bancoData.saldoFinal
       );
 
-      const empresa = req.body.empresa as string;
-      if (!empresa || !COMPANIES.includes(empresa as (typeof COMPANIES)[number])) {
-        res.status(400).json({ error: "Selecciona una empresa válida." });
-        return;
-      }
-
-      const fechaDesde = (req.body.fechaDesde as string) || undefined;
-      const fechaHasta = (req.body.fechaHasta as string) || undefined;
-
-      const buffer = await exportConciliacion(resumen, {
-        empresa,
-        fechaDesde,
-        fechaHasta,
-      });
+      const buffer = await exportConciliacion(resumen, encabezadoVentas(ventas));
 
       const filename = `conciliacion_${new Date().toISOString().slice(0, 10)}.xlsx`;
 

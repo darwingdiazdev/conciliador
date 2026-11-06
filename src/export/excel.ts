@@ -30,7 +30,7 @@ const BNC_LOGO = "BNC.png";
 
 export async function exportConciliacion(
   resumen: ResumenConciliacion,
-  options: { empresa?: string; fechaDesde?: string; fechaHasta?: string } = {}
+  options: { titulo?: string; empresa?: string; fechaDesde?: string; fechaHasta?: string } = {}
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const headerRow = 4;
@@ -40,6 +40,7 @@ export async function exportConciliacion(
 
   const filas = resumen.filas;
   const empresa =
+    options.titulo ||
     options.empresa ||
     filas.find((f) => f.empresa)?.empresa ||
     COMPANIES[COMPANIES.length - 1];
@@ -60,7 +61,7 @@ export async function exportConciliacion(
   // ── Fila 2: empresa ──
   sheet.getRow(2).height = 22;
   mergeAndStyle(sheet, `A2:${lastCol}2`, {
-    value: empresa.toUpperCase(),
+    value: empresa,
     font: { bold: true, size: 11, color: { argb: BLACK } },
     fill: GREY_HEADER,
     alignment: { horizontal: "center", vertical: "middle" },
