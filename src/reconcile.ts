@@ -31,7 +31,7 @@ export function reconcile(
     list.push(b);
     bancoByMonto.set(key, list);
   }
-
+// Hola 
   const bancosUsados = new Set<BancoRow>();
   const merchantConciliados = new Set<MerchantRow>();
   const filas: ConciliacionRow[] = [];
