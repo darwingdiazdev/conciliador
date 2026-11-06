@@ -37,7 +37,7 @@ export async function exportConciliacion(
     views: [{ state: "frozen", ySplit: headerRow }],
   });
 
-  const filas = resumen.filas.filter((f) => f.pagado);
+  const filas = resumen.filas;
   const empresa =
     options.empresa ||
     filas.find((f) => f.empresa)?.empresa ||
@@ -206,14 +206,6 @@ export async function exportConciliacion(
     formats: [undefined, FMT_FACTURA, undefined, FMT_BS, FMT_USD, FMT_TASA],
     emptyText: "No hay movimientos del merchant sin coincidencia",
     widths: [14, 14, 22, 18, 14, 12, 72],
-  });
-  addFilteredSheet(workbook, "Abonos sin banco", {
-    title: "Abonos sin coincidencia en el banco",
-    headers: ["Fecha", "N° Factura", "Referencia", "Monto Bs", "Monto USD", "Tasa", "Por qué"],
-    rows: resumen.merchantSinBanco.map(merchantSinVentaValues),
-    formats: [undefined, FMT_FACTURA, undefined, FMT_BS, FMT_USD, FMT_TASA],
-    emptyText: "No hay abonos sin coincidencia en el banco",
-    widths: [14, 14, 22, 18, 14, 12, 62],
   });
 
   sheet.columns = [
