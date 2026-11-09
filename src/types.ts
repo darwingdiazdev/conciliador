@@ -37,6 +37,9 @@ export interface MerchantSinConciliarRow extends MerchantRow {
 export interface BancoParseResult {
   movimientos: BancoRow[];
   saldoFinal: number;
+  /** Período del título del EDC, p. ej. "DEL 19/10/2026 AL 1/11/2026". */
+  fechaDesde?: string;
+  fechaHasta?: string;
 }
 
 export type TipoPagoCuota = "Pago completo" | "Abono";

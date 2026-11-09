@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { encabezadoVentas, parseVentas } from "./parsers/ventas";
+import { encabezadoVentas, nombreArchivoConciliacion, parseVentas } from "./parsers/ventas";
 import { parseMerchant } from "./parsers/merchant";
 import { parseBanco } from "./parsers/banco";
 import { parseEstadoCuenta } from "./parsers/estado-cuenta";
@@ -57,15 +57,21 @@ app.post(
         bancoData.saldoFinal
       );
 
-      const buffer = await exportConciliacion(resumen, encabezadoVentas(ventas));
+      const encabezado = encabezadoVentas(ventas);
+      if (bancoData.fechaDesde && bancoData.fechaHasta) {
+        encabezado.fechaDesde = bancoData.fechaDesde;
+        encabezado.fechaHasta = bancoData.fechaHasta;
+      }
 
-      const filename = `conciliacion_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const buffer = await exportConciliacion(resumen, encabezado);
+
+      const filename = nombreArchivoConciliacion(ventas);
 
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Disposition", contentDisposition(filename));
       res.send(buffer);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";
@@ -153,20 +159,12 @@ app.post(
       const reporte = await resumirOrdenesPorQuincena(req.file.buffer);
       const buffer = await exportOrdenesQuincenas(reporte);
       const filename = nombreArchivoQuincenas(reporte);
-      const ascii = filename
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^\x20-\x7E]/g, "")
-        .replace(/"/g, "");
 
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`
-      );
+      res.setHeader("Content-Disposition", contentDisposition(filename));
       res.send(buffer);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";
@@ -174,6 +172,15 @@ app.post(
     }
   }
 );
+
+function contentDisposition(filename: string): string {
+  const ascii = filename
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/"/g, "");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
 
 app.listen(PORT, () => {
   console.log(`Conciliador disponible en http://localhost:${PORT}`);

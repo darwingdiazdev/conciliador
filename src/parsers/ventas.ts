@@ -105,14 +105,14 @@ export async function parseVentas(buffer: Buffer): Promise<VentaRow[]> {
   return ventas;
 }
 
-/** Título "tienda - empresa" y rango de fechas del archivo de ventas. */
+/** Título "sucursal - empresa" y rango de fechas del archivo de ventas. */
 export function encabezadoVentas(
   ventas: VentaRow[],
   hoy = new Date()
 ): { titulo: string; fechaDesde: string; fechaHasta: string } {
   const conteo = new Map<string, number>();
   for (const venta of ventas) {
-    const tituloFila = [nombreTienda(venta.sucursal), venta.empresa.trim()]
+    const tituloFila = [venta.sucursal.trim(), venta.empresa.trim()]
       .filter(Boolean)
       .join(" - ");
     if (!tituloFila) continue;
@@ -126,8 +126,27 @@ export function encabezadoVentas(
   return { titulo: titulo || "Conciliación de pagos", fechaDesde, fechaHasta };
 }
 
-function nombreTienda(sucursal: string): string {
-  return sucursal.split("-")[0]?.trim() ?? "";
+/** conciliacion_fecha + sucursales + razones sociales del archivo de ventas. */
+export function nombreArchivoConciliacion(ventas: VentaRow[], hoy = new Date()): string {
+  const fecha = hoy.toISOString().slice(0, 10);
+  const sucursales = masFrecuentes(ventas.map((venta) => venta.sucursal.trim()));
+  const razones = masFrecuentes(ventas.map((venta) => venta.empresa.trim()));
+  const raw = [`conciliacion_${fecha}`, sucursales.join(", "), razones.join(", ")]
+    .filter(Boolean)
+    .join(" ");
+  const limpio = raw.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  return `${limpio.slice(0, 180)}.xlsx`;
+}
+
+function masFrecuentes(valores: string[]): string[] {
+  const conteo = new Map<string, number>();
+  for (const valor of valores) {
+    if (!valor) continue;
+    conteo.set(valor, (conteo.get(valor) ?? 0) + 1);
+  }
+  return [...conteo.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([nombre]) => nombre);
 }
 
 function rangoPorDistancia(

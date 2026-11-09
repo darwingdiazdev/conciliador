@@ -27,6 +27,7 @@ export async function parseBanco(buffer: Buffer): Promise<BancoParseResult> {
     throw new Error('No se encontró la columna "Saldo" en el extracto del banco.');
   }
 
+  const periodo = periodoDelTitulo(allRows.slice(0, headerIdx));
   const movimientos: BancoRow[] = [];
   let saldoFinal = NaN;
 
@@ -39,8 +40,8 @@ export async function parseBanco(buffer: Buffer): Promise<BancoParseResult> {
       saldoFinal = saldo;
     }
 
-    const firstCell = cellToString(row[0]).toLowerCase();
-    if (firstCell.includes("total")) continue;
+    const filaTexto = row.map((c) => cellToString(c).toLowerCase()).join(" ");
+    if (filaTexto.includes("total")) continue;
 
     const tipoOperacion =
       colTipo >= 0 ? cellToString(row[colTipo]) : colDesc >= 0 ? cellToString(row[colDesc]) : "";
@@ -81,5 +82,32 @@ export async function parseBanco(buffer: Buffer): Promise<BancoParseResult> {
     throw new Error("No se pudo determinar el saldo final del extracto bancario.");
   }
 
-  return { movimientos, saldoFinal };
+  return { movimientos, saldoFinal, ...periodo };
+}
+
+/** "MOVIMIENTOS ENTRE FECHAS DEL 19/10/2026 AL 1/11/2026" */
+function periodoDelTitulo(rows: unknown[][]): {
+  fechaDesde?: string;
+  fechaHasta?: string;
+} {
+  const re =
+    /del\s+(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\s+al\s+(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})/i;
+
+  for (const row of rows) {
+    if (!row) continue;
+    for (const cell of row) {
+      const match = cellToString(cell).match(re);
+      if (!match) continue;
+      return {
+        fechaDesde: iso(match[3], match[2], match[1]),
+        fechaHasta: iso(match[6], match[5], match[4]),
+      };
+    }
+  }
+
+  return {};
+}
+
+function iso(anio: string, mes: string, dia: string): string {
+  return `${anio}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 }
